@@ -74,7 +74,7 @@ export const Register = () => {
         full_name: formData.fullName,
         password: formData.password
       });
-      navigate('/home');
+      navigate('/');
     } catch (error) {
       setErrors({ 
         submit: error.message || 'Error al crear la cuenta. Inténtalo de nuevo.' 

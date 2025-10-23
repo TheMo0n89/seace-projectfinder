@@ -22,6 +22,7 @@ import { About } from './pages/About';
 import { NotFound } from './pages/NotFound';
 import Login from './pages/Login';
 import LogsDashboard from './pages/LogsDashboard';
+import { Register } from './pages/Register';
 
 // Componente para tracking de navegación
 function NavigationTracker() {
@@ -55,6 +56,10 @@ function AppRoutes() {
       <Route 
         path="/login" 
         element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} 
+      />
+      <Route 
+        path="/register" 
+        element={isAuthenticated ? <Navigate to="/" replace /> : <Register />} 
       />
       <Route path="/about" element={<About />} />
       
