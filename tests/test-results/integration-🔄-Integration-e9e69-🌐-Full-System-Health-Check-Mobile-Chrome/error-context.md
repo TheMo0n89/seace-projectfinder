@@ -1,0 +1,99 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]:
+      - link "SEACE ProjectFinder SEACE ProjectFinder" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img "SEACE ProjectFinder" [ref=e9]
+        - generic [ref=e10]: SEACE ProjectFinder
+      - button [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+  - main [ref=e15]:
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - link "SEACE ProjectFinder" [ref=e20] [cursor=pointer]:
+          - /url: /
+          - img [ref=e22]
+          - generic [ref=e24]: SEACE ProjectFinder
+        - heading "Iniciar Sesión" [level=2] [ref=e25]
+        - paragraph [ref=e26]: Accede a tu cuenta para continuar
+      - generic [ref=e27]:
+        - heading "Cuentas de Demostración:" [level=4] [ref=e28]
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - strong [ref=e31]: "Admin:"
+            - text: admin / admin123
+          - generic [ref=e32]:
+            - strong [ref=e33]: "Usuario:"
+            - text: guest / guest123
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e36]: Usuario
+          - generic [ref=e37]:
+            - generic:
+              - img
+            - textbox "Usuario" [ref=e38]:
+              - /placeholder: Ingresa tu usuario
+        - generic [ref=e39]:
+          - generic [ref=e40]: Contraseña
+          - generic [ref=e41]:
+            - generic:
+              - img
+            - textbox "Contraseña" [ref=e42]:
+              - /placeholder: Ingresa tu contraseña
+            - button [ref=e44] [cursor=pointer]:
+              - img [ref=e45]
+        - button "Iniciar Sesión" [ref=e48] [cursor=pointer]:
+          - img [ref=e49]
+          - text: Iniciar Sesión
+      - paragraph [ref=e52]:
+        - text: ¿No tienes una cuenta?
+        - link "Registrarse" [ref=e53] [cursor=pointer]:
+          - /url: /register
+      - link "← Volver al inicio" [ref=e55] [cursor=pointer]:
+        - /url: /
+  - contentinfo [ref=e56]:
+    - generic [ref=e57]:
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - img "SEACE ProjectFinder" [ref=e61]
+            - generic [ref=e62]: SEACE ProjectFinder
+          - paragraph [ref=e63]: Plataforma inteligente para el análisis y búsqueda de procesos de contratación del Sistema Electrónico de Contrataciones del Estado (SEACE).
+          - paragraph [ref=e64]: Desarrollado como parte del proyecto de Inteligencia de Negocios - UPT
+        - generic [ref=e65]:
+          - heading "Enlaces Rápidos" [level=3] [ref=e66]
+          - list [ref=e67]:
+            - listitem [ref=e68]:
+              - link "Inicio" [ref=e69] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e70]:
+              - link "Catálogo de Procesos" [ref=e71] [cursor=pointer]:
+                - /url: /catalog
+            - listitem [ref=e72]:
+              - link "Asistente IA" [ref=e73] [cursor=pointer]:
+                - /url: /chatbot
+            - listitem [ref=e74]:
+              - link "Dashboard" [ref=e75] [cursor=pointer]:
+                - /url: /dashboard
+        - generic [ref=e76]:
+          - heading "Información" [level=3] [ref=e77]
+          - list [ref=e78]:
+            - listitem [ref=e79]:
+              - link "Acerca del Proyecto" [ref=e80] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e81]:
+              - link "OSCE" [ref=e82] [cursor=pointer]:
+                - /url: https://www.osce.gob.pe/
+            - listitem [ref=e83]:
+              - link "SEACE" [ref=e84] [cursor=pointer]:
+                - /url: https://www.seace.gob.pe/
+            - listitem [ref=e85]:
+              - link "Universidad Privada de Tacna" [ref=e86] [cursor=pointer]:
+                - /url: https://www.upt.edu.pe/
+      - generic [ref=e88]:
+        - paragraph [ref=e89]: © 2025 SEACE ProjectFinder. Proyecto académico - UPT.
+        - paragraph [ref=e91]: "Última actualización: 17/10/2025"
+```

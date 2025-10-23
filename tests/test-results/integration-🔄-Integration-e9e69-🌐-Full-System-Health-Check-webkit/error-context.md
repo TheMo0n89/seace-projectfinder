@@ -1,0 +1,114 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]:
+      - link "SEACE ProjectFinder SEACE ProjectFinder" [ref=e8]:
+        - /url: /
+        - img "SEACE ProjectFinder" [ref=e9]
+        - generic [ref=e10]: SEACE ProjectFinder
+      - generic [ref=e11]:
+        - link "Acerca de" [ref=e12]:
+          - /url: /about
+          - img [ref=e13]
+          - generic [ref=e15]: Acerca de
+        - link "Iniciar Sesión" [ref=e17]:
+          - /url: /login
+          - img [ref=e18]
+          - generic [ref=e20]: Iniciar Sesión
+  - main [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - link "SEACE ProjectFinder" [ref=e26]:
+            - /url: /
+            - img [ref=e28]
+            - generic [ref=e30]: SEACE ProjectFinder
+          - heading "Iniciar Sesión" [level=2] [ref=e31]
+          - paragraph [ref=e32]: Accede a tu cuenta para continuar
+        - generic [ref=e33]:
+          - heading "Cuentas de Demostración:" [level=4] [ref=e34]
+          - generic [ref=e35]:
+            - generic [ref=e36]:
+              - strong [ref=e37]: "Admin:"
+              - text: admin / admin123
+            - generic [ref=e38]:
+              - strong [ref=e39]: "Usuario:"
+              - text: guest / guest123
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - generic [ref=e42]: Usuario
+            - generic [ref=e43]:
+              - generic:
+                - img
+              - textbox "Usuario" [ref=e44]:
+                - /placeholder: Ingresa tu usuario
+          - generic [ref=e45]:
+            - generic [ref=e46]: Contraseña
+            - generic [ref=e47]:
+              - generic:
+                - img
+              - textbox "Contraseña" [ref=e48]:
+                - /placeholder: Ingresa tu contraseña
+              - button [ref=e50] [cursor=pointer]:
+                - img [ref=e51]
+          - button "Iniciar Sesión" [ref=e54] [cursor=pointer]:
+            - img [ref=e55]
+            - text: Iniciar Sesión
+        - paragraph [ref=e58]:
+          - text: ¿No tienes una cuenta?
+          - link "Registrarse" [ref=e59]:
+            - /url: /register
+        - link "← Volver al inicio" [ref=e61]:
+          - /url: /
+      - generic [ref=e64]:
+        - heading "Bienvenido de vuelta" [level=3] [ref=e65]
+        - paragraph [ref=e66]: Accede a tu cuenta y continúa explorando las mejores oportunidades de contratación pública para tu empresa.
+        - paragraph [ref=e68]:
+          - text: Más de
+          - strong [ref=e69]: 1,000+
+          - text: oportunidades analizadas semanalmente
+  - contentinfo [ref=e73]:
+    - generic [ref=e74]:
+      - generic [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - img "SEACE ProjectFinder" [ref=e78]
+            - generic [ref=e79]: SEACE ProjectFinder
+          - paragraph [ref=e80]: Plataforma inteligente para el análisis y búsqueda de procesos de contratación del Sistema Electrónico de Contrataciones del Estado (SEACE).
+          - paragraph [ref=e81]: Desarrollado como parte del proyecto de Inteligencia de Negocios - UPT
+        - generic [ref=e82]:
+          - heading "Enlaces Rápidos" [level=3] [ref=e83]
+          - list [ref=e84]:
+            - listitem [ref=e85]:
+              - link "Inicio" [ref=e86]:
+                - /url: /
+            - listitem [ref=e87]:
+              - link "Catálogo de Procesos" [ref=e88]:
+                - /url: /catalog
+            - listitem [ref=e89]:
+              - link "Asistente IA" [ref=e90]:
+                - /url: /chatbot
+            - listitem [ref=e91]:
+              - link "Dashboard" [ref=e92]:
+                - /url: /dashboard
+        - generic [ref=e93]:
+          - heading "Información" [level=3] [ref=e94]
+          - list [ref=e95]:
+            - listitem [ref=e96]:
+              - link "Acerca del Proyecto" [ref=e97]:
+                - /url: /about
+            - listitem [ref=e98]:
+              - link "OSCE" [ref=e99]:
+                - /url: https://www.osce.gob.pe/
+            - listitem [ref=e100]:
+              - link "SEACE" [ref=e101]:
+                - /url: https://www.seace.gob.pe/
+            - listitem [ref=e102]:
+              - link "Universidad Privada de Tacna" [ref=e103]:
+                - /url: https://www.upt.edu.pe/
+      - generic [ref=e105]:
+        - paragraph [ref=e106]: © 2025 SEACE ProjectFinder. Proyecto académico - UPT.
+        - paragraph [ref=e108]: "Última actualización: 17/10/2025"
+```

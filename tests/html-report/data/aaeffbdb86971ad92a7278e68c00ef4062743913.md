@@ -1,0 +1,108 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]:
+      - link "SEACE ProjectFinder SEACE ProjectFinder" [ref=e8]:
+        - /url: /
+        - img "SEACE ProjectFinder" [ref=e9]
+        - generic [ref=e10]: SEACE ProjectFinder
+      - generic [ref=e11]:
+        - link "Inicio" [ref=e12]:
+          - /url: /
+          - img [ref=e13]
+          - generic [ref=e15]: Inicio
+        - link "Catálogo" [ref=e16]:
+          - /url: /catalog
+          - img [ref=e17]
+          - generic [ref=e19]: Catálogo
+        - link "Chatbot" [ref=e20]:
+          - /url: /chatbot
+          - img [ref=e21]
+          - generic [ref=e23]: Chatbot
+        - link "Dashboard" [ref=e24]:
+          - /url: /dashboard
+          - img [ref=e25]
+          - generic [ref=e27]: Dashboard
+        - link "Admin" [ref=e28]:
+          - /url: /admin
+          - img [ref=e29]
+          - generic [ref=e31]: Admin
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - img [ref=e34]
+            - generic [ref=e36]: admin
+            - generic [ref=e37]: admin
+          - button "Salir" [ref=e38] [cursor=pointer]:
+            - img [ref=e39]
+            - generic [ref=e41]: Salir
+  - main [ref=e42]:
+    - generic [ref=e46]:
+      - img [ref=e49]
+      - heading "404" [level=1] [ref=e51]
+      - heading "Página no encontrada" [level=2] [ref=e52]
+      - paragraph [ref=e53]: Lo sentimos, la página que estás buscando no existe o ha sido movida.
+      - generic [ref=e54]:
+        - button "Ir al Inicio" [ref=e55] [cursor=pointer]:
+          - link "Ir al Inicio" [ref=e56]:
+            - /url: /
+            - img [ref=e57]
+            - text: Ir al Inicio
+        - button "Explorar Catálogo" [ref=e59] [cursor=pointer]:
+          - link "Explorar Catálogo" [ref=e60]:
+            - /url: /catalog
+            - img [ref=e61]
+            - text: Explorar Catálogo
+      - generic [ref=e63]:
+        - paragraph [ref=e64]: "¿Necesitas ayuda? Puedes:"
+        - generic [ref=e65]:
+          - link "Conocer más sobre el proyecto" [ref=e66]:
+            - /url: /about
+          - link "Consultar con nuestro asistente IA" [ref=e67]:
+            - /url: /chatbot
+          - link "Contactar soporte técnico" [ref=e68]:
+            - /url: mailto:soporte@seaceprojectfinder.com
+  - contentinfo [ref=e69]:
+    - generic [ref=e70]:
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - img "SEACE ProjectFinder" [ref=e74]
+            - generic [ref=e75]: SEACE ProjectFinder
+          - paragraph [ref=e76]: Plataforma inteligente para el análisis y búsqueda de procesos de contratación del Sistema Electrónico de Contrataciones del Estado (SEACE).
+          - paragraph [ref=e77]: Desarrollado como parte del proyecto de Inteligencia de Negocios - UPT
+        - generic [ref=e78]:
+          - heading "Enlaces Rápidos" [level=3] [ref=e79]
+          - list [ref=e80]:
+            - listitem [ref=e81]:
+              - link "Inicio" [ref=e82]:
+                - /url: /
+            - listitem [ref=e83]:
+              - link "Catálogo de Procesos" [ref=e84]:
+                - /url: /catalog
+            - listitem [ref=e85]:
+              - link "Asistente IA" [ref=e86]:
+                - /url: /chatbot
+            - listitem [ref=e87]:
+              - link "Dashboard" [ref=e88]:
+                - /url: /dashboard
+        - generic [ref=e89]:
+          - heading "Información" [level=3] [ref=e90]
+          - list [ref=e91]:
+            - listitem [ref=e92]:
+              - link "Acerca del Proyecto" [ref=e93]:
+                - /url: /about
+            - listitem [ref=e94]:
+              - link "OSCE" [ref=e95]:
+                - /url: https://www.osce.gob.pe/
+            - listitem [ref=e96]:
+              - link "SEACE" [ref=e97]:
+                - /url: https://www.seace.gob.pe/
+            - listitem [ref=e98]:
+              - link "Universidad Privada de Tacna" [ref=e99]:
+                - /url: https://www.upt.edu.pe/
+      - generic [ref=e101]:
+        - paragraph [ref=e102]: © 2025 SEACE ProjectFinder. Proyecto académico - UPT.
+        - paragraph [ref=e104]: "Última actualización: 17/10/2025"
+```

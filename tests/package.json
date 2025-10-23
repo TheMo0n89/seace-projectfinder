@@ -1,0 +1,41 @@
+{
+  "name": "seace-projectfinder-tests",
+  "version": "1.0.0",
+  "description": "Tests E2E y unitarios para SEACE ProjectFinder - Ejecutados completamente en Docker",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:headed": "playwright test --headed",
+    "test:api": "playwright test --grep='API'",
+    "test:frontend": "playwright test --grep='Frontend'",
+    "test:integration": "playwright test --grep='Integration'",
+    "test:docker": "../run-tests.sh all",
+    "test:docker:unit": "../run-tests.sh unit",
+    "test:docker:api": "../run-tests.sh api",
+    "test:docker:frontend": "../run-tests.sh frontend",
+    "test:docker:e2e": "../run-tests.sh e2e",
+    "report": "playwright show-report",
+    "report:html": "open html-report/index.html",
+    "install:browsers": "playwright install",
+    "docker:build": "docker-compose build tests",
+    "docker:shell": "docker-compose exec tests bash"
+  },
+  "keywords": [
+    "testing",
+    "e2e",
+    "playwright",
+    "docker",
+    "seace",
+    "api-testing",
+    "ui-testing"
+  ],
+  "author": "SEACE ProjectFinder Team",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "axios": "^1.6.2"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,81 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]:
+      - link "SEACE ProjectFinder SEACE ProjectFinder" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img "SEACE ProjectFinder" [ref=e9]
+        - generic [ref=e10]: SEACE ProjectFinder
+      - button [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+  - main [ref=e15]:
+    - generic [ref=e19]:
+      - img [ref=e22]
+      - heading "404" [level=1] [ref=e24]
+      - heading "Página no encontrada" [level=2] [ref=e25]
+      - paragraph [ref=e26]: Lo sentimos, la página que estás buscando no existe o ha sido movida.
+      - generic [ref=e27]:
+        - button "Ir al Inicio" [ref=e28] [cursor=pointer]:
+          - link "Ir al Inicio" [ref=e29]:
+            - /url: /
+            - img [ref=e30]
+            - text: Ir al Inicio
+        - button "Explorar Catálogo" [ref=e32] [cursor=pointer]:
+          - link "Explorar Catálogo" [ref=e33]:
+            - /url: /catalog
+            - img [ref=e34]
+            - text: Explorar Catálogo
+      - generic [ref=e36]:
+        - paragraph [ref=e37]: "¿Necesitas ayuda? Puedes:"
+        - generic [ref=e38]:
+          - link "Conocer más sobre el proyecto" [ref=e39] [cursor=pointer]:
+            - /url: /about
+          - link "Consultar con nuestro asistente IA" [ref=e40] [cursor=pointer]:
+            - /url: /chatbot
+          - link "Contactar soporte técnico" [ref=e41] [cursor=pointer]:
+            - /url: mailto:soporte@seaceprojectfinder.com
+  - contentinfo [ref=e42]:
+    - generic [ref=e43]:
+      - generic [ref=e44]:
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - img "SEACE ProjectFinder" [ref=e47]
+            - generic [ref=e48]: SEACE ProjectFinder
+          - paragraph [ref=e49]: Plataforma inteligente para el análisis y búsqueda de procesos de contratación del Sistema Electrónico de Contrataciones del Estado (SEACE).
+          - paragraph [ref=e50]: Desarrollado como parte del proyecto de Inteligencia de Negocios - UPT
+        - generic [ref=e51]:
+          - heading "Enlaces Rápidos" [level=3] [ref=e52]
+          - list [ref=e53]:
+            - listitem [ref=e54]:
+              - link "Inicio" [ref=e55] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e56]:
+              - link "Catálogo de Procesos" [ref=e57] [cursor=pointer]:
+                - /url: /catalog
+            - listitem [ref=e58]:
+              - link "Asistente IA" [ref=e59] [cursor=pointer]:
+                - /url: /chatbot
+            - listitem [ref=e60]:
+              - link "Dashboard" [ref=e61] [cursor=pointer]:
+                - /url: /dashboard
+        - generic [ref=e62]:
+          - heading "Información" [level=3] [ref=e63]
+          - list [ref=e64]:
+            - listitem [ref=e65]:
+              - link "Acerca del Proyecto" [ref=e66] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e67]:
+              - link "OSCE" [ref=e68] [cursor=pointer]:
+                - /url: https://www.osce.gob.pe/
+            - listitem [ref=e69]:
+              - link "SEACE" [ref=e70] [cursor=pointer]:
+                - /url: https://www.seace.gob.pe/
+            - listitem [ref=e71]:
+              - link "Universidad Privada de Tacna" [ref=e72] [cursor=pointer]:
+                - /url: https://www.upt.edu.pe/
+      - generic [ref=e74]:
+        - paragraph [ref=e75]: © 2025 SEACE ProjectFinder. Proyecto académico - UPT.
+        - paragraph [ref=e77]: "Última actualización: 17/10/2025"
+```
