@@ -233,7 +233,8 @@ CREATE INDEX IF NOT EXISTS idx_etl_logs_operation ON etl_logs(operation_type);
 CREATE INDEX IF NOT EXISTS idx_etl_logs_status ON etl_logs(status);
 
 -- Índice vectorial para búsquedas de similitud
-CREATE INDEX IF NOT EXISTS idx_embeddings_vector ON proceso_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX IF NOT EXISTS idx_embeddings_vector ON proceso_embeddings USING ivfflat (embedding_combined vector_cosine_ops) WITH (lists = 100);
+
 
 -- Función para actualizar fecha_actualizacion automáticamente
 CREATE OR REPLACE FUNCTION update_fecha_actualizacion()
