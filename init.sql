@@ -1,16 +1,19 @@
 -- Inicialización completa de la base de datos para SEACE ProjectFinder
--- Fecha: 22 de octubre de 2025
+-- Fecha: 23 de octubre de 2025
 -- ÚNICA FUENTE DE VERDAD para el esquema de la base de datos
 -- Este script crea TODAS las tablas con todas las columnas necesarias desde el inicio
 -- NO usar archivos migrate-*.sql; modificar este archivo directamente si hay cambios
 
--- Instalación de extensiones necesarias
+-- Correcciones y validaciones aplicadas para PostgreSQL
+-- Fecha: 23 de octubre de 2025
+
+-- Asegurar extensiones necesarias
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "vector";
 
--- Tabla para usuarios del sistema
+-- Tabla de usuarios
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     hashed_password VARCHAR(128) NOT NULL,
@@ -22,14 +25,13 @@ CREATE TABLE IF NOT EXISTS users (
     last_login TIMESTAMP
 );
 
--- Insertar usuarios iniciales con contraseñas hasheadas
--- Contraseña: admin123 -> hash generado con bcrypt
+-- Insertar usuarios iniciales
 INSERT INTO users (username, email, hashed_password, full_name, role) VALUES
 ('admin', 'admin@seaceprojectfinder.com', '$2a$10$IAmBGWJ3mVMKXkIUbvTmQexURArb.mm2kd6ZdKDJV.Vx9o7M6VBQa', 'Administrador del Sistema', 'admin'),
 ('guest', 'user@seaceprojectfinder.com', '$2a$10$IAmBGWJ3mVMKXkIUbvTmQeR9b37zMersIFWtGNgofB1qYxnoE.VLa', 'Usuario Invitado', 'guest')
 ON CONFLICT (username) DO NOTHING;
 
--- Tabla para almacenar procesos SEACE (con todas las columnas del modelo Sequelize)
+-- Tabla de procesos
 CREATE TABLE IF NOT EXISTS procesos (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     id_proceso VARCHAR(255) UNIQUE NOT NULL,
@@ -52,7 +54,7 @@ CREATE TABLE IF NOT EXISTS procesos (
     estado_proceso VARCHAR(100),
     fecha_publicacion TIMESTAMP,
     fecha_limite_presentacion TIMESTAMP,
-    monto_referencial DECIMAL(15,2),
+    monto_referencial NUMERIC(15,2),
     moneda VARCHAR(10),
     rubro VARCHAR(200),
     departamento VARCHAR(100),
@@ -95,7 +97,7 @@ CREATE TABLE IF NOT EXISTS anexos (
 -- Tabla para almacenar recomendaciones generadas por IA
 CREATE TABLE IF NOT EXISTS recomendaciones (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     proceso_id UUID NOT NULL REFERENCES procesos(id) ON DELETE CASCADE,
     score FLOAT,
     visible BOOLEAN DEFAULT true,
@@ -242,12 +244,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger para actualizar updated_at en users
-CREATE TRIGGER trigger_update_users_fecha
-    BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION update_fecha_actualizacion();
-
+-- Trigger para actualizar updated_at en procesos
 CREATE TRIGGER trigger_update_procesos_fecha
     BEFORE UPDATE ON procesos
     FOR EACH ROW

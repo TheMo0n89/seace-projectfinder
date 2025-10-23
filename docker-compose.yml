@@ -31,7 +31,7 @@ services:
       - DB_PASSWORD=seace_password
       - JWT_SECRET=LbOHQwNGLKvz7gOxckWe8XoTdsarw4n7DBFAJGLw7Js
       - JWT_EXPIRES_IN=24h
-      - CORS_ORIGIN=http://localhost:3000
+      - CORS_ORIGIN=http://161.132.49.24:5173
       - LOG_LEVEL=info
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
@@ -68,7 +68,7 @@ services:
     ports:
       - "5173:80"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://161.132.49.24:8000
       - NODE_ENV=production
     depends_on:
       backend-nodejs:
