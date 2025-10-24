@@ -7,12 +7,13 @@ import {
   DocumentTextIcon,
   LinkIcon
 } from '@heroicons/react/24/outline';
-import { useChatbot, useChatbotSuggestions } from '../hooks/useChatbot';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { LoadingSpinner } from '../components/ui/Loading';
-import { ErrorAlert } from '../components/ui/Alert';
-import { utils } from '../services/seaceService';
+// FIX: rutas relativas tras mover el componente a components/chatbot
+import { useChatbot, useChatbotSuggestions } from '../../hooks/useChatbot';
+import { Card } from '../ui/Card';
+import { Button } from '../ui/Button';
+import { LoadingSpinner } from '../ui/Loading';
+import { ErrorAlert } from '../ui/Alert';
+import { utils } from '../../services/seaceService';
 
 export const Chatbot = () => {
   const [inputMessage, setInputMessage] = useState('');

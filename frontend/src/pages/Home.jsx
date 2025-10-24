@@ -92,7 +92,7 @@ export const Home = () => {
               inteligentes sobre procesos TI.
             </p>
             <Button variant="ghost" asChild>
-              <Link to="/chatbot" className="flex items-center justify-center">
+              <Link to="/catalog?chatbot=open" className="flex items-center justify-center">
                 Probar Asistente
                 <ArrowRightIcon className="w-4 h-4 ml-2" />
               </Link>

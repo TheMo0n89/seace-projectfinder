@@ -47,7 +47,6 @@ services:
         condition: service_healthy
     volumes:
       - backend_logs:/app/logs
-      - /app/node_modules
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8000/api/v1/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
@@ -68,6 +67,7 @@ services:
     ports:
       - "5173:80"
     environment:
+    # CAMBIAR IP POR LOCALHOST SI SE DESEA TRABAJAR EN LOCAL
       - VITE_API_URL=http://161.132.49.24:8000
       - NODE_ENV=production
     depends_on:

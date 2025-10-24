@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { chatbotService, utils } from '../services/seaceService';
+import logger from '../services/logger';
 
 export const useChatbot = () => {
   const [messages, setMessages] = useState([]);
@@ -47,15 +48,30 @@ export const useChatbot = () => {
       const botMessage = {
         id: Date.now() + 1,
         type: 'bot',
-        content: response.response,
-        metadata: response.metadata,
-        sources: response.sources,
+        content: response.data.response,
+        metadata: response.data.metadata,
+        sources: response.data.sources,
         timestamp: new Date().toISOString()
       };
 
       setMessages(prev => [...prev, botMessage]);
     } catch (err) {
       setError(err.message);
+      // LOGGING: API key inválida o autorización fallida sin romper UI
+      const msg = String(err.message || '');
+      if (/api key|token inválido|no autorizado|unauthorized|forbidden|403|401/i.test(msg)) {
+        logger.warn('Chatbot: API key inválida o autorización fallida', {
+          event_type: 'chatbot_auth',
+          error_message: msg,
+          session_id: sessionId
+        });
+      } else {
+        logger.error('Chatbot: error al procesar consulta', {
+          event_type: 'chatbot_error',
+          error_message: msg,
+          session_id: sessionId
+        });
+      }
       
       const errorMessage = {
         id: Date.now() + 1,

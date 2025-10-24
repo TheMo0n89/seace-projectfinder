@@ -98,20 +98,46 @@ export const procesosService = {
 export const chatbotService = {
   // Enviar consulta al chatbot
   query: async (queryData) => {
+    const startTime = performance.now();
     try {
       const response = await api.post('/chatbot/query', queryData);
-      return response.data;
+      const duration = performance.now() - startTime;
+      logger.apiCall('POST', '/chatbot/query', response.status, duration, { query: queryData.query });
+      return { data: response.data?.data || response.data };
     } catch (error) {
+      const duration = performance.now() - startTime;
+      const status = error.response?.status || 0;
+      if (status === 401 || status === 403) {
+        logger.warn('Chatbot auth failed (posible API key inválida)', {
+          event_type: 'chatbot_auth',
+          status,
+          message: error.response?.data?.message || error.message
+        });
+      }
+      logger.apiCall('POST', '/chatbot/query', status, duration, { error: error.message });
       throw new Error(error.response?.data?.message || 'Error en consulta del chatbot');
     }
   },
 
   // Obtener sugerencias de consultas
   getSuggestions: async () => {
+    const startTime = performance.now();
     try {
       const response = await api.get('/chatbot/suggestions');
-      return response.data;
+      const duration = performance.now() - startTime;
+      logger.apiCall('GET', '/chatbot/suggestions', response.status, duration, {});
+      return { suggestions: response.data?.data || response.data };
     } catch (error) {
+      const duration = performance.now() - startTime;
+      const status = error.response?.status || 0;
+      if (status === 401 || status === 403) {
+        logger.warn('Chatbot suggestions auth failed (posible API key inválida)', {
+          event_type: 'chatbot_auth',
+          status,
+          message: error.response?.data?.message || error.message
+        });
+      }
+      logger.apiCall('GET', '/chatbot/suggestions', status, duration, { error: error.message });
       throw new Error(error.response?.data?.message || 'Error obteniendo sugerencias');
     }
   },

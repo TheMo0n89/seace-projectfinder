@@ -62,7 +62,7 @@ export const NotFound = () => {
                 Conocer más sobre el proyecto
               </Link>
               <Link 
-                to="/chatbot" 
+                to="/catalog?chatbot=open" 
                 className="block text-seace-blue hover:text-seace-blue-dark"
               >
                 Consultar con nuestro asistente IA

@@ -17,6 +17,7 @@ import { ErrorAlert } from '../components/ui/Alert';
 import { Pagination } from '../components/ui/Pagination';
 import { utils } from '../services/seaceService';
 import { useChatbot } from '../hooks/useChatbot';
+import { Chatbot } from '../components/chatbot/Chatbot';
 
 export const Catalog = () => {
   const [filters, setFilters] = useState({
@@ -383,7 +384,7 @@ export const Catalog = () => {
             {/* Chat Content */}
             <div className="flex-1 overflow-hidden">
               {/* Renderizar el chatbot flotante */}
-              {isChatbotOpen && <FloatingChatbot />}
+              {isChatbotOpen && <Chatbot />}
             </div>
             
             {/* Status Bar */}

@@ -163,7 +163,7 @@ export const Home = () => {
                     </a>
                     
                     <a
-                      href="/chatbot"
+                      href="/catalog?chatbot=open"
                       className="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
                     >
                       <div className="bg-green-100 p-2 rounded-lg">

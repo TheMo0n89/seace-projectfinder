@@ -8,40 +8,57 @@ class ChatbotService {
   async processQuery(query, sessionId = null) {
     try {
       const startTime = Date.now();
-      
+
       // Generar session_id si no se proporciona
       if (!sessionId) {
         sessionId = require('uuid').v4();
       }
 
-      // Validar consulta relacionada con SEACE
-      if (!this.isValidSeaceQuery(query)) {
-        return {
-          response: "Lo siento, solo puedo responder preguntas relacionadas con contratación pública peruana y oportunidades de TI en el SEACE.",
-          relevant_processes: [],
-          session_id: sessionId,
-          response_time_ms: Date.now() - startTime,
-          model_used: "filter",
-          sources_cited: []
-        };
-      }
+      // Procesar consulta con servicio de procesos para obtener contexto
+      const chatbotProcessService = require('./chatbotProcessService');
+      const procResult = await chatbotProcessService.processQuery(query);
 
-      // Generar respuesta (aquí se integraría con servicio de IA)
-      const response = await this.generateResponse(query);
+      // Construir fuentes a partir de procesos
+      const sources = (procResult.processes || []).map(p => ({
+        title: p.nomenclatura || p.descripcion,
+        url: p.url
+      }));
+
+      // Validar dominio de la consulta (SEACE/contratación pública)
+      const isSeace = this.isValidSeaceQuery(query);
+      const baseResponse = isSeace ? (procResult.response || '') :
+        "Lo siento, solo puedo responder preguntas relacionadas con contratación pública peruana y oportunidades de TI en el SEACE.";
+
+      // Generar respuesta con Gemini usando contexto
+      const { generateChatResponse, getModelName } = require('../utils/ai');
+      const aiText = await generateChatResponse(query, {
+        processes: procResult.processes || [],
+        metadata: procResult.metadata || {}
+      });
+
+      // Respuesta compuesta compatible con el frontend (useChatbot)
+      const responseObj = {
+        response: (aiText && isSeace) ? aiText : baseResponse,
+        metadata: procResult.metadata || {},
+        sources,
+        relevant_processes: (procResult.processes || []).map(p => p.id),
+        model_used: getModelName()
+      };
+
       const responseTime = Date.now() - startTime;
 
       // Guardar log
       await ChatbotLog.create({
         session_id: sessionId,
         user_query: query,
-        ai_response: response.response,
-        relevant_processes: response.relevant_processes || [],
+        ai_response: responseObj.response,
+        relevant_processes: responseObj.relevant_processes || [],
         response_time_ms: responseTime,
-        model_used: response.model_used || 'gemini-2.5-flash'
+        model_used: responseObj.model_used
       });
 
       return {
-        ...response,
+        ...responseObj,
         session_id: sessionId,
         response_time_ms: responseTime
       };
