@@ -92,6 +92,7 @@ class ChatbotProcessService {
         monto: p.monto_referencial,
         moneda: p.moneda || 'PEN',
         tipo: p.objeto_contratacion || 'No especificado',
+        objeto_contratacion: p.objeto_contratacion || 'No especificado',
         fecha: p.fecha_publicacion,
         url: `/procesos/${p.id}`
       }));
@@ -133,7 +134,8 @@ class ChatbotProcessService {
         'servicio',
         'servicios',
         'contratar servicio',
-        'prestación de servicio'
+        'prestación de servicio',
+        'prestación'
       ],
       bien: [
         'bien',
@@ -141,7 +143,23 @@ class ChatbotProcessService {
         'compra',
         'compras',
         'adquisición',
-        'bienes y servicios'
+        'bienes y servicios',
+        'suministro'
+      ],
+      consultoria: [
+        'consultoría',
+        'consultoria',
+        'consultor',
+        'asesoría',
+        'asesoria',
+        'estudio',
+        'diseño'
+      ],
+      obra: [
+        'obra',
+        'obras',
+        'ejecución de obra',
+        'construcción de obra'
       ],
       ti: [
         'software',
@@ -218,31 +236,41 @@ class ChatbotProcessService {
         limit: 5
       },
       servicio: {
-        objeto_contratacion: 'servicio',
+        objeto_contratacion: 'Servicio',  // Exacto como en BD
         limit: 5
       },
       bien: {
-        objeto_contratacion: 'bien',
+        objeto_contratacion: 'Bien',  // Exacto como en BD
+        limit: 5
+      },
+      consultoria: {
+        objeto_contratacion: 'Consultoría de Obra',  // Exacto como en BD
+        limit: 5
+      },
+      obra: {
+        objeto_contratacion: 'Obra',  // Para cuando se implemente
         limit: 5
       },
       ti: {
-        keywords: ['software', 'sistema', 'tecnología', 'informática', 'desarrollo'],
-        limit: 5
+        keywords: ['software', 'sistema', 'tecnología', 'informática', 'desarrollo', 'aplicación', 'digital'],
+        objeto_contratacion: 'Servicio',  // TI suele ser servicio
+        limit: 8
       },
       salud: {
-        keywords: ['salud', 'hospital', 'médico', 'sanidad'],
+        keywords: ['salud', 'hospital', 'médico', 'sanidad', 'clínica', 'equipo médico'],
         limit: 5
       },
       infraestructura: {
-        keywords: ['infraestructura', 'construcción', 'obra', 'vía', 'carretera'],
+        keywords: ['infraestructura', 'construcción', 'obra', 'vía', 'carretera', 'puente'],
+        objeto_contratacion: 'Consultoría de Obra',
         limit: 5
       },
       educacion: {
-        keywords: ['educación', 'escuela', 'colegio', 'universidad'],
+        keywords: ['educación', 'escuela', 'colegio', 'universidad', 'educativo'],
         limit: 5
       },
       transporte: {
-        keywords: ['transporte', 'vehículo', 'buses', 'logística'],
+        keywords: ['transporte', 'vehículo', 'buses', 'logística', 'movilidad'],
         limit: 5
       }
     };
@@ -273,6 +301,14 @@ class ChatbotProcessService {
       bien: {
         found: `Se encontraron ${processes.length} procesos para compra de bienes:`,
         empty: 'No hay procesos de compra de bienes registrados.'
+      },
+      consultoria: {
+        found: `Hay ${processes.length} procesos de consultoría de obra disponibles:`,
+        empty: 'No hay procesos de consultoría de obra en este momento.'
+      },
+      obra: {
+        found: `Se encontraron ${processes.length} proyectos de obra:`,
+        empty: 'No hay proyectos de obra registrados actualmente.'
       },
       ti: {
         found: `Encontré ${processes.length} procesos relacionados con tecnología e informática:`,
@@ -307,9 +343,10 @@ class ChatbotProcessService {
   /**
    * Procesar una consulta completa del chatbot
    * @param {string} query - Consulta del usuario
+   * @param {Object} userContext - Contexto del perfil de usuario (si está disponible)
    * @returns {Promise<Object>} { response, processes, hasProcesses, metadata }
    */
-  async processQuery(query) {
+  async processQuery(query, userContext = null) {
     try {
       // 1. Extraer intención
       const intentions = this.extractIntention(query);
@@ -317,30 +354,64 @@ class ChatbotProcessService {
       let response = '';
       let processes = [];
       let hasProcesses = false;
-      let metadata = { intention: intentions, processCount: 0 };
+      let metadata = { intention: intentions, processCount: 0, personalized: !!userContext };
+
+      // Si el usuario tiene perfil completado, priorizar según sus preferencias
+      if (userContext && userContext.regiones_foco && userContext.regiones_foco !== 'todas') {
+        metadata.userPreferences = {
+          regiones: userContext.regiones_foco,
+          especialidad: userContext.especialidad,
+          monto: userContext.monto_preferido
+        };
+      }
 
       if (intentions.length > 0) {
         // 2. Construir criterios de búsqueda
-        const criteria = this.buildSearchCriteria(intentions[0]);
+        let criteria = this.buildSearchCriteria(intentions[0]);
 
-        // 3. Buscar procesos
+        // 3. Si hay contexto de usuario, ajustar criterios
+        if (userContext) {
+          // Ajustar según monto preferido del usuario
+          if (userContext.monto_preferido && userContext.monto_preferido !== 'cualquiera') {
+            const montoMatch = userContext.monto_preferido.match(/(\d+)\s*-\s*(\d+)/);
+            if (montoMatch) {
+              criteria.monto_min = parseInt(montoMatch[1]);
+              criteria.monto_max = parseInt(montoMatch[2]);
+            }
+          }
+
+          // Aumentar límite si el usuario busca procesos específicos
+          criteria.limit = 8;
+        }
+
+        // 4. Buscar procesos
         processes = await this.searchProcesses(criteria);
 
-        // 4. Generar respuesta
+        // 5. Generar respuesta
         response = this.generateResponse(intentions[0], processes);
 
         hasProcesses = processes.length > 0;
         metadata.processCount = processes.length;
         metadata.searchCriteria = criteria;
       } else {
-        // Sin intención clara
-        response =
-          '¡Hola! Te ayudaré a encontrar procesos SEACE. Prueba con:\n' +
-          '• "Procesos para municipalidades"\n' +
-          '• "Servicios de software"\n' +
-          '• "Bienes a contratar"\n' +
-          '• "Procesos de infraestructura"\n' +
-          '¿Qué buscas?';
+        // Sin intención clara - mostrar ayuda contextualizada
+        if (userContext && userContext.especialidad !== 'no especificada') {
+          response = `¡Hola! Como especialista en ${userContext.especialidad}, puedo ayudarte a encontrar procesos SEACE relevantes.\n\n` +
+            'Prueba con:\n' +
+            '• "Procesos de servicios"\n' +
+            '• "Bienes tecnológicos"\n' +
+            '• "Consultoría de obra"\n' +
+            '• "Procesos en ' + (userContext.regiones_foco || 'mi región') + '"\n\n' +
+            '¿Qué buscas?';
+        } else {
+          response =
+            '¡Hola! Te ayudaré a encontrar procesos SEACE. Prueba con:\n' +
+            '• "Procesos de servicios"\n' +
+            '• "Bienes a contratar"\n' +
+            '• "Consultoría de obra"\n' +
+            '• "Procesos de infraestructura"\n\n' +
+            '¿Qué buscas?';
+        }
       }
 
       return {

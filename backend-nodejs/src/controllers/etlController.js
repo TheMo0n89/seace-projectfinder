@@ -92,7 +92,8 @@ class ETLController {
         page: parseInt(req.query.page) || 1,
         size: parseInt(req.query.size) || 50,
         operation_type: req.query.operation_type,
-        status: req.query.status
+        status: req.query.status,
+        operation_id: req.query.operation_id
       };
 
       const result = await etlService.getETLLogs(filters);

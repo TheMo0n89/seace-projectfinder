@@ -8,27 +8,24 @@ import {
   ClockIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
-  UsersIcon
+  UsersIcon,
+  UserIcon
 } from '@heroicons/react/24/outline';
-import { useAdminStatus, useETLOperations, useStats, useUsers } from '../hooks/useAdmin';
+import { useETLOperations, useUsers } from '../hooks/useAdmin';
 import { Card, CardHeader, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { LoadingSpinner } from '../components/ui/Loading';
 import { ErrorAlert, Alert } from '../components/ui/Alert';
 
 export const Admin = () => {
-  const [activeTab, setActiveTab] = useState('status');
+  const [activeTab, setActiveTab] = useState('etl');
   
-  const { status, loading: statusLoading, error: statusError, refetch } = useAdminStatus();
   const { operations, runDailySync, runFullSync, runTISync, generateEmbeddings } = useETLOperations();
-  const { stats, loading: statsLoading, error: statsError } = useStats();
   const { users, loading: usersLoading, error: usersError } = useUsers();
 
   const tabs = [
-    { id: 'status', name: 'Estado del Sistema', icon: CogIcon },
     { id: 'etl', name: 'Operaciones ETL', icon: ArrowPathIcon },
-    { id: 'users', name: 'Gestión de Usuarios', icon: UsersIcon },
-    { id: 'stats', name: 'Estadísticas', icon: DocumentTextIcon }
+    { id: 'users', name: 'Gestión de Usuarios', icon: UsersIcon }
   ];
   
   // Redireccionar a la página de ETL específica
@@ -75,15 +72,6 @@ export const Admin = () => {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'status' && (
-        <SystemStatus 
-          status={status} 
-          loading={statusLoading} 
-          error={statusError} 
-          onRefresh={refetch}
-        />
-      )}
-      
       {activeTab === 'etl' && (
         <div className="space-y-6">
           <ETLOperations operations={operations} actions={{
@@ -121,159 +109,11 @@ export const Admin = () => {
           error={usersError} 
         />
       )}
-      
-      {activeTab === 'stats' && (
-        <SystemStats 
-          stats={stats} 
-          loading={statsLoading} 
-          error={statsError} 
-        />
-      )}
     </div>
   );
 };
 
-const SystemStatus = ({ status, loading, error, onRefresh }) => {
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
 
-  if (error) {
-    return (
-      <ErrorAlert 
-        error={error}
-        onRetry={onRefresh}
-        onDismiss={() => {}}
-      />
-    );
-  }
-
-  const getStatusColor = (status) => {
-    if (status === 'healthy' || status === 'success') return 'text-green-600';
-    if (status === 'warning') return 'text-yellow-600';
-    if (status === 'error' || status === 'failed') return 'text-red-600';
-    return 'text-gray-600';
-  };
-
-  const getStatusIcon = (status) => {
-    if (status === 'healthy' || status === 'success') return CheckCircleIcon;
-    if (status === 'warning') return ExclamationCircleIcon;
-    if (status === 'error' || status === 'failed') return ExclamationCircleIcon;
-    return ClockIcon;
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Health Check */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Estado de Salud del Sistema</h3>
-            <Button variant="outline" onClick={onRefresh}>
-              <ArrowPathIcon className="w-4 h-4 mr-2" />
-              Actualizar
-            </Button>
-          </div>
-        </CardHeader>
-        <CardBody>
-          {status?.health && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {Object.entries(status.health.services || status.health).map(([key, value]) => {
-                const serviceData = typeof value === 'string' ? { status: value, message: value } : value;
-                const StatusIcon = getStatusIcon(serviceData.status);
-                return (
-                  <div key={key} className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center mb-2">
-                      <StatusIcon className={`w-5 h-5 mr-2 ${getStatusColor(serviceData.status)}`} />
-                      <span className="font-medium capitalize">{key.replace('_', ' ')}</span>
-                    </div>
-                    <div className={`text-sm ${getStatusColor(serviceData.status)}`}>
-                      {serviceData.message || serviceData.status}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardBody>
-      </Card>
-
-      {/* ETL Status */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Estado ETL</h3>
-        </CardHeader>
-        <CardBody>
-          {status?.etl ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-500">Última Sincronización</div>
-                  <div className="font-medium">
-                    {status.etl.last_sync ? new Date(status.etl.last_sync).toLocaleString('es-PE') : 'Nunca'}
-                  </div>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-500">Procesos Totales</div>
-                  <div className="font-medium">{status.etl.total_processes || 0}</div>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-500">Procesos TI</div>
-                  <div className="font-medium">{status.etl.ti_processes || 0}</div>
-                </div>
-              </div>
-              
-              {status.etl.sync_in_progress && (
-                <Alert
-                  type="info"
-                  title="Sincronización en progreso"
-                  message="El sistema está procesando datos del SEACE. Esta operación puede tomar varios minutos."
-                />
-              )}
-            </div>
-          ) : (
-            <div className="text-gray-500">No hay información de ETL disponible</div>
-          )}
-        </CardBody>
-      </Card>
-
-      {/* System Status */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Estado del Sistema</h3>
-        </CardHeader>
-        <CardBody>
-          {status?.system ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-500">Uso de CPU</div>
-                <div className="font-medium">{status.system.cpu_usage || 'N/A'}%</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-500">Uso de Memoria</div>
-                <div className="font-medium">{status.system.memory_usage || 'N/A'}%</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-500">Espacio en Disco</div>
-                <div className="font-medium">{status.system.disk_usage || 'N/A'}%</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-500">Tiempo Activo</div>
-                <div className="font-medium">{status.system.uptime || 'N/A'}</div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-gray-500">No hay información del sistema disponible</div>
-          )}
-        </CardBody>
-      </Card>
-    </div>
-  );
-};
 
 const ETLOperations = ({ operations, actions }) => {
   const [fullSyncDays, setFullSyncDays] = useState(365);
@@ -426,14 +266,85 @@ const UserManagement = ({ users, loading, error }) => {
     );
   }
 
+  // Calcular estadísticas de usuarios
+  const totalUsers = users?.length || 0;
+  const activeUsers = users?.filter(u => u.is_active)?.length || 0;
+  const adminUsers = users?.filter(u => u.role === 'admin')?.length || 0;
+  const usersWithProfile = users?.filter(u => u.profile_completed)?.length || 0;
+  const usersWithRecommendations = users?.filter(u => u.recommendations_count > 0)?.length || 0;
+
   return (
     <div className="space-y-6">
+      {/* Estadísticas de Usuarios */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-blue-600 font-medium">Total Usuarios</p>
+                <p className="text-2xl font-bold text-blue-900">{totalUsers}</p>
+              </div>
+              <UsersIcon className="w-8 h-8 text-blue-400" />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-green-600 font-medium">Activos</p>
+                <p className="text-2xl font-bold text-green-900">{activeUsers}</p>
+              </div>
+              <CheckCircleIcon className="w-8 h-8 text-green-400" />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-red-600 font-medium">Admins</p>
+                <p className="text-2xl font-bold text-red-900">{adminUsers}</p>
+              </div>
+              <CogIcon className="w-8 h-8 text-red-400" />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-purple-600 font-medium">Con Perfil</p>
+                <p className="text-2xl font-bold text-purple-900">{usersWithProfile}</p>
+              </div>
+              <UserIcon className="w-8 h-8 text-purple-400" />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
+          <CardBody>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-indigo-600 font-medium">Con Recomendaciones</p>
+                <p className="text-2xl font-bold text-indigo-900">{usersWithRecommendations}</p>
+              </div>
+              <SparklesIcon className="w-8 h-8 text-indigo-400" />
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Tabla de Usuarios */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Gestión de Usuarios</h3>
+            <h3 className="text-lg font-semibold">Lista de Usuarios</h3>
             <div className="text-sm text-gray-500">
-              Total: {users?.length || 0} usuarios
+              {totalUsers} usuario{totalUsers !== 1 ? 's' : ''} registrado{totalUsers !== 1 ? 's' : ''}
             </div>
           </div>
         </CardHeader>
@@ -456,17 +367,28 @@ const UserManagement = ({ users, loading, error }) => {
                       Estado
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Perfil
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Recomendaciones
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Último Login
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Registro
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
+                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-seace-blue flex items-center justify-center">
+                            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                              user.role === 'admin' ? 'bg-red-500' : 'bg-seace-blue'
+                            }`}>
                               <span className="text-sm font-medium text-white">
                                 {user.full_name?.charAt(0)?.toUpperCase() || user.username?.charAt(0)?.toUpperCase()}
                               </span>
@@ -503,8 +425,43 @@ const UserManagement = ({ users, loading, error }) => {
                           {user.is_active ? 'Activo' : 'Inactivo'}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          user.profile_completed 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {user.profile_completed ? 'Completo' : 'Incompleto'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className="inline-flex items-center px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium">
+                          {user.recommendations_count || 0}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {user.last_login ? new Date(user.last_login).toLocaleString('es-PE') : 'Nunca'}
+                        {user.last_login ? (
+                          <div>
+                            <div>{new Date(user.last_login).toLocaleDateString('es-PE')}</div>
+                            <div className="text-xs text-gray-400">
+                              {new Date(user.last_login).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">Nunca</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {user.created_at ? (
+                          <div>
+                            <div>{new Date(user.created_at).toLocaleDateString('es-PE')}</div>
+                            <div className="text-xs text-gray-400">
+                              {new Date(user.created_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">N/A</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -526,93 +483,4 @@ const UserManagement = ({ users, loading, error }) => {
   );
 };
 
-const SystemStats = ({ stats, loading, error }) => {
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
 
-  if (error) {
-    return (
-      <ErrorAlert 
-        error={error}
-        onDismiss={() => {}}
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Procesos Stats */}
-      {stats?.procesos && (
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Estadísticas de Procesos</h3>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">
-                  {stats.procesos.total || 0}
-                </div>
-                <div className="text-sm text-blue-700">Total de Procesos</div>
-              </div>
-              <div className="p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  {stats.procesos.ti_count || 0}
-                </div>
-                <div className="text-sm text-green-700">Procesos TI</div>
-              </div>
-              <div className="p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">
-                  {stats.procesos.adjudicados || 0}
-                </div>
-                <div className="text-sm text-purple-700">Adjudicados</div>
-              </div>
-              <div className="p-4 bg-yellow-50 rounded-lg">
-                <div className="text-2xl font-bold text-yellow-600">
-                  {stats.procesos.en_proceso || 0}
-                </div>
-                <div className="text-sm text-yellow-700">En Proceso</div>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Chatbot Stats */}
-      {stats?.chatbot && (
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold">Estadísticas del Chatbot</h3>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-indigo-50 rounded-lg">
-                <div className="text-2xl font-bold text-indigo-600">
-                  {stats.chatbot.total_queries || 0}
-                </div>
-                <div className="text-sm text-indigo-700">Consultas Totales</div>
-              </div>
-              <div className="p-4 bg-cyan-50 rounded-lg">
-                <div className="text-2xl font-bold text-cyan-600">
-                  {stats.chatbot.unique_sessions || 0}
-                </div>
-                <div className="text-sm text-cyan-700">Sesiones Únicas</div>
-              </div>
-              <div className="p-4 bg-pink-50 rounded-lg">
-                <div className="text-2xl font-bold text-pink-600">
-                  {Math.round(stats.chatbot.avg_response_time || 0)}ms
-                </div>
-                <div className="text-sm text-pink-700">Tiempo Promedio</div>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      )}
-    </div>
-  );
-};

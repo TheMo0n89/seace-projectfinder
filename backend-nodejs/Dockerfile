@@ -12,7 +12,8 @@ RUN apk update && apk add --no-cache \
     ca-certificates \
     ttf-freefont \
     nodejs \
-    yarn
+    yarn \
+    netcat-openbsd
 
 # Configurar variables para Puppeteer
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \

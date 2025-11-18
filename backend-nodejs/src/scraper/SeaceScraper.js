@@ -121,9 +121,10 @@ class SeaceScraper {
 
       logger.info('Iniciando extracción de páginas...');
 
-      while (hasMorePages && allResults.length < maxProcesses) {
+      while (hasMorePages && (maxProcesses === null || allResults.length < maxProcesses)) {
         logger.info(`=== PROCESANDO PÁGINA ${currentPage} ===`);
-        logger.info(`Procesos acumulados hasta ahora: ${allResults.length}/${maxProcesses}`);
+        const limitMsg = maxProcesses ? `${allResults.length}/${maxProcesses}` : `${allResults.length}`;
+        logger.info(`Procesos acumulados hasta ahora: ${limitMsg}`);
 
         const pageResults = await this.extractTableData();
 
@@ -137,8 +138,8 @@ class SeaceScraper {
 
         logger.info(`Página ${currentPage}: ${pageResults.length} procesos extraídos (Total acumulado: ${allResults.length})`);
 
-        // Verificar si hemos alcanzado el límite
-        if (allResults.length >= maxProcesses) {
+        // Verificar si hemos alcanzado el límite (solo si existe)
+        if (maxProcesses && allResults.length >= maxProcesses) {
           logger.info(`Límite de ${maxProcesses} procesos alcanzado. Deteniendo extracción.`);
           break;
         }
@@ -164,7 +165,7 @@ class SeaceScraper {
       logger.info(`Total de procesos extraídos: ${allResults.length}`);
       logger.info(`Procesos por página promedio: ${totalPagesProcessed > 0 ? (allResults.length / totalPagesProcessed).toFixed(1) : 0}`);
 
-      return allResults.slice(0, maxProcesses);
+      return maxProcesses ? allResults.slice(0, maxProcesses) : allResults;
 
     } catch (error) {
       logger.error('Error durante scraping:', error);

@@ -2,36 +2,37 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   PaperAirplaneIcon, 
   ChatBubbleLeftRightIcon,
-  LightBulbIcon,
+  PlusIcon,
   TrashIcon,
-  DocumentTextIcon,
-  LinkIcon
+  EllipsisVerticalIcon,
+  PencilIcon,
+  ArrowsPointingOutIcon,
+  ArrowsPointingInIcon
 } from '@heroicons/react/24/outline';
-// FIX: rutas relativas tras mover el componente a components/chatbot
-import { useChatbot, useChatbotSuggestions } from '../../hooks/useChatbot';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { LoadingSpinner } from '../ui/Loading';
+import { Link, useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import axios from 'axios';
 import { ErrorAlert } from '../ui/Alert';
-import { utils } from '../../services/seaceService';
 
-export const Chatbot = () => {
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+
+export const Chatbot = ({ onClose }) => {
   const [inputMessage, setInputMessage] = useState('');
+  const [sessions, setSessions] = useState([]);
+  const [activeSession, setActiveSession] = useState(null);
+  const [showSessions, setShowSessions] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [usePersonalization, setUsePersonalization] = useState(false);
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({ total_sessions: 0, remaining_slots: 5 });
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-
-  const { 
-    messages, 
-    loading, 
-    error, 
-    sendMessage, 
-    clearMessages 
-  } = useChatbot();
-
-  const { 
-    suggestions, 
-    loading: suggestionsLoading 
-  } = useChatbotSuggestions();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -41,16 +42,223 @@ export const Chatbot = () => {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    loadSessions();
+    loadStats();
+  }, []);
+
+  // Cargar mensajes cuando cambia la sesión activa
+  useEffect(() => {
+    if (activeSession) {
+      loadSessionMessages(activeSession.id);
+    } else {
+      setMessages([]);
+    }
+  }, [activeSession]);
+
+  const loadSessionMessages = async (sessionId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/chat/sessions/${sessionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const sessionMessages = response.data.data.session.messages || [];
+      const formattedMessages = [];
+      
+      sessionMessages.forEach(msg => {
+        formattedMessages.push({
+          id: `user-${msg.id}`,
+          type: 'user',
+          content: msg.user_query,
+          timestamp: msg.created_at
+        });
+        formattedMessages.push({
+          id: `bot-${msg.id}`,
+          type: 'bot',
+          content: msg.ai_response,
+          metadata: { processes: msg.relevant_processes },
+          timestamp: msg.created_at
+        });
+      });
+      
+      setMessages(formattedMessages);
+    } catch (err) {
+      console.error('Error loading messages:', err);
+    }
+  };
+
+  const loadSessions = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/chat/sessions`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSessions(response.data.data.sessions || []);
+      
+      // Si no hay sesión activa, crear una
+      if (!activeSession && response.data.data.sessions.length === 0) {
+        await createNewSession();
+      } else if (!activeSession && response.data.data.sessions.length > 0) {
+        setActiveSession(response.data.data.sessions[0]);
+      }
+    } catch (err) {
+      console.error('Error loading sessions:', err);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/chat/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setStats(response.data.data);
+    } catch (err) {
+      console.error('Error loading stats:', err);
+    }
+  };
+
+  const createNewSession = async () => {
+    try {
+      if (stats.remaining_slots === 0) {
+        alert('Has alcanzado el límite de 5 chats. Elimina uno para crear otro.');
+        return;
+      }
+      
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API_URL}/chat/sessions`, 
+        { title: 'Nuevo Chat' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      const newSession = response.data.data.session;
+      setSessions([newSession, ...sessions]);
+      setActiveSession(newSession);
+      await loadStats();
+    } catch (err) {
+      if (err.response?.data?.code === 'MAX_SESSIONS_REACHED') {
+        alert(err.response.data.message);
+      } else {
+        console.error('Error creating session:', err);
+      }
+    }
+  };
+
+  const deleteSession = async (sessionId) => {
+    if (!confirm('¿Eliminar este chat?')) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_URL}/chat/sessions/${sessionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const newSessions = sessions.filter(s => s.id !== sessionId);
+      setSessions(newSessions);
+      
+      if (activeSession?.id === sessionId) {
+        setActiveSession(newSessions[0] || null);
+      }
+      
+      await loadStats();
+    } catch (err) {
+      console.error('Error deleting session:', err);
+    }
+  };
+
+  const updateSessionTitle = async (sessionId, newTitle) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`${API_URL}/chat/sessions/${sessionId}/title`,
+        { title: newTitle },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setSessions(sessions.map(s => 
+        s.id === sessionId ? { ...s, title: newTitle } : s
+      ));
+      setEditingSessionId(null);
+    } catch (err) {
+      console.error('Error updating title:', err);
+    }
+  };
+
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || loading) return;
+    if (!inputMessage.trim() || loading || !activeSession) return;
 
     const message = inputMessage.trim();
     setInputMessage('');
     
+    // Agregar mensaje del usuario inmediatamente
+    const userMsg = {
+      id: `user-${Date.now()}`,
+      type: 'user',
+      content: message,
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setLoading(true);
+    setError(null);
+
     try {
-      await sendMessage(message);
+      const token = localStorage.getItem('token');
+      
+      // Enviar consulta al chatbot con o sin personalización
+      const chatResponse = await axios.post(
+        `${API_URL}/chatbot/query`,
+        { 
+          query: message,
+          use_personalization: usePersonalization 
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const aiResponse = chatResponse.data.data.response || 'Sin respuesta';
+      const relevantProcesses = chatResponse.data.data.metadata?.process_ids || [];
+
+      // Agregar mensaje de la IA
+      const botMsg = {
+        id: `bot-${Date.now()}`,
+        type: 'bot',
+        content: aiResponse,
+        metadata: { processes: relevantProcesses },
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, botMsg]);
+
+      // Guardar en la base de datos
+      await axios.post(
+        `${API_URL}/chat/sessions/${activeSession.id}/messages`,
+        {
+          user_query: message,
+          ai_response: aiResponse,
+          relevant_processes: relevantProcesses,
+          response_time_ms: chatResponse.data.data.metadata?.response_time || 0
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Si es el primer mensaje, actualizar el título
+      if (messages.length === 0 || activeSession.title === 'Nuevo Chat') {
+        const autoTitle = message.split(' ').slice(0, 5).join(' ');
+        await updateSessionTitle(activeSession.id, autoTitle);
+      }
     } catch (err) {
       console.error('Error sending message:', err);
+      setError('Error al enviar el mensaje. Intenta nuevamente.');
+      
+      // Mensaje de error
+      const errorMsg = {
+        id: `error-${Date.now()}`,
+        type: 'bot',
+        content: 'Lo siento, ha ocurrido un error. Por favor, intenta nuevamente.',
+        error: true,
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,13 +269,149 @@ export const Chatbot = () => {
     }
   };
 
-  const handleSuggestionClick = (suggestion) => {
-    setInputMessage(suggestion);
-    inputRef.current?.focus();
-  };
-
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className={`flex flex-col bg-white rounded-lg shadow-2xl transition-all duration-300 ${
+      isExpanded ? 'w-[700px] h-[85vh]' : 'w-96 h-[600px]'
+    }`}>
+      {/* Header con sesiones */}
+      <div className="border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-t-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h3 className="font-bold text-sm">
+              {activeSession ? activeSession.title : 'Asistente IA'}
+            </h3>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs opacity-90">
+                {stats.remaining_slots} de 5 chats disponibles
+              </p>
+              {usePersonalization && (
+                <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                  ✨ Personalizado
+                </span>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {/* Toggle Personalización */}
+            <button
+              onClick={() => setUsePersonalization(!usePersonalization)}
+              className={`p-1.5 rounded-lg transition-all ${
+                usePersonalization 
+                  ? 'bg-white/30 hover:bg-white/40' 
+                  : 'hover:bg-white/20'
+              }`}
+              title={usePersonalization ? 'Desactivar personalización' : 'Activar personalización con mi perfil'}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </button>
+            
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+              title={isExpanded ? 'Contraer' : 'Expandir'}
+            >
+              {isExpanded ? (
+                <ArrowsPointingInIcon className="h-5 w-5" />
+              ) : (
+                <ArrowsPointingOutIcon className="h-5 w-5" />
+              )}
+            </button>
+            
+            <button
+              onClick={createNewSession}
+              disabled={stats.remaining_slots === 0}
+              className="p-1.5 hover:bg-white/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Nuevo chat"
+            >
+              <PlusIcon className="h-5 w-5" />
+            </button>
+            
+            <button
+              onClick={() => setShowSessions(!showSessions)}
+              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+              title="Mis chats"
+            >
+              <EllipsisVerticalIcon className="h-5 w-5" />
+            </button>
+            
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+              title="Cerrar"
+            >
+              <span className="text-xl leading-none">×</span>
+            </button>
+          </div>
+        </div>
+        
+        {/* Lista de sesiones */}
+        {showSessions && (
+          <div className="mt-2 bg-white rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {sessions.map((session) => (
+              <div
+                key={session.id}
+                className={`flex items-center gap-2 p-2 hover:bg-gray-50 ${
+                  activeSession?.id === session.id ? 'bg-blue-50' : ''
+                }`}
+              >
+                {editingSessionId === session.id ? (
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onBlur={() => {
+                      if (editTitle.trim()) {
+                        updateSessionTitle(session.id, editTitle.trim());
+                      }
+                      setEditingSessionId(null);
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && editTitle.trim()) {
+                        updateSessionTitle(session.id, editTitle.trim());
+                      }
+                    }}
+                    className="flex-1 px-2 py-1 text-sm border rounded text-gray-900"
+                    autoFocus
+                  />
+                ) : (
+                  <button
+                    onClick={() => {
+                      setActiveSession(session);
+                      setShowSessions(false);
+                    }}
+                    className="flex-1 text-left px-2 py-1 text-sm text-gray-900 truncate"
+                  >
+                    {session.title}
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => {
+                    setEditingSessionId(session.id);
+                    setEditTitle(session.title);
+                  }}
+                  className="p-1 hover:bg-gray-200 rounded text-gray-600"
+                  title="Editar"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                </button>
+                
+                <button
+                  onClick={() => deleteSession(session.id)}
+                  className="p-1 hover:bg-red-100 rounded text-red-600"
+                  title="Eliminar"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      
       {/* Welcome Message - Only show when no messages */}
       {messages.length === 0 && (
         <div className="p-6 text-center">
@@ -153,19 +497,27 @@ export const Chatbot = () => {
         </div>
         
         {/* Quick suggestions */}
-        {messages.length === 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {['Procesos TI', 'Licitaciones activas', 'Recomendaciones'].map((suggestion) => (
-              <button
-                key={suggestion}
-                onClick={() => setInputMessage(suggestion)}
-                className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="mt-3 flex flex-wrap gap-2 max-h-20 overflow-y-auto">
+          {[
+            'Procesos de tecnología',
+            'Licitaciones de software',
+            'Contrataciones de sistemas',
+            'Procesos de desarrollo',
+            'Licitaciones activas',
+            'Recomiéndame procesos SEACE',
+            'Adjudicaciones recientes',
+            'Procesos informática'
+          ].map((suggestion) => (
+            <button
+              key={suggestion}
+              onClick={() => setInputMessage(suggestion)}
+              disabled={loading}
+              className="px-3 py-1.5 text-xs bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-gray-700 rounded-full transition-all border border-blue-200 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -174,6 +526,37 @@ export const Chatbot = () => {
 const MessageBubble = ({ message }) => {
   const isUser = message.type === 'user';
   const isError = message.error;
+  const navigate = useNavigate();
+
+  // Componente personalizado para enlaces internos
+  const LinkRenderer = ({ href, children }) => {
+    // Detectar si es un enlace interno a procesos
+    if (href && (href.startsWith('/procesos/') || href.startsWith('/process/'))) {
+      const processId = href.split('/').pop();
+      return (
+        <Link 
+          to={`/process/${processId}`}
+          className="text-blue-600 hover:text-blue-800 underline font-medium"
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          {children}
+        </Link>
+      );
+    }
+    // Enlaces externos
+    return (
+      <a 
+        href={href} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:text-blue-800 underline"
+      >
+        {children}
+      </a>
+    );
+  };
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
@@ -190,8 +573,34 @@ const MessageBubble = ({ message }) => {
             ? 'bg-red-50 text-red-800 border border-red-200'
             : 'bg-gray-100 text-gray-800 rounded-bl-md'
       } shadow-sm`}>
-        <div className="text-sm leading-relaxed whitespace-pre-wrap">
-          {message.content}
+        <div className="text-sm leading-relaxed prose prose-sm max-w-none">
+          {isUser ? (
+            <div className="whitespace-pre-wrap">{message.content}</div>
+          ) : (
+            <ReactMarkdown
+              rehypePlugins={[rehypeRaw]}
+              components={{
+                a: LinkRenderer,
+                // Personalizar otros elementos
+                h2: ({node, ...props}) => <h2 className="text-base font-bold mt-3 mb-2" {...props} />,
+                h3: ({node, ...props}) => <h3 className="text-sm font-semibold mt-2 mb-1" {...props} />,
+                ul: ({node, ...props}) => <ul className="list-disc ml-4 my-2 space-y-1" {...props} />,
+                ol: ({node, ...props}) => <ol className="list-decimal ml-4 my-2 space-y-1" {...props} />,
+                li: ({node, ...props}) => <li className="text-sm" {...props} />,
+                p: ({node, ...props}) => <p className="my-1" {...props} />,
+                strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                em: ({node, ...props}) => <em className="italic" {...props} />,
+                code: ({node, inline, ...props}) => 
+                  inline ? (
+                    <code className="bg-gray-200 px-1 py-0.5 rounded text-xs" {...props} />
+                  ) : (
+                    <code className="block bg-gray-200 p-2 rounded text-xs my-2" {...props} />
+                  )
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          )}
         </div>
         
         {/* Sources */}

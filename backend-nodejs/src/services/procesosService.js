@@ -16,10 +16,14 @@ class ProcesosService {
         size = 20,
         estado_proceso,
         tipo_proceso,
+        objeto_contratacion,
         rubro,
         departamento,
+        entidad_nombre,
         monto_min,
         monto_max,
+        fecha_desde,
+        fecha_hasta,
         search_text,
         sort_by = 'fecha_publicacion',
         sort_order = 'DESC'
@@ -38,6 +42,11 @@ class ProcesosService {
         };
       }
 
+      // Filtro de Objeto de Contratación (Servicio, Bien, Consultoría de Obra, Obra)
+      if (objeto_contratacion) {
+        whereClause.objeto_contratacion = objeto_contratacion;
+      }
+
       if (rubro) {
         whereClause.rubro = {
           [Op.iLike]: `%${rubro}%`
@@ -50,24 +59,51 @@ class ProcesosService {
         };
       }
 
+      // Filtro de Entidad
+      if (entidad_nombre) {
+        whereClause[Op.or] = [
+          { nombre_entidad: { [Op.iLike]: `%${entidad_nombre}%` } },
+          { entidad_nombre: { [Op.iLike]: `%${entidad_nombre}%` } }
+        ];
+      }
+
+      // Filtros de Monto
       if (monto_min) {
         whereClause.monto_referencial = {
           ...whereClause.monto_referencial,
-          [Op.gte]: monto_min
+          [Op.gte]: parseFloat(monto_min)
         };
       }
 
       if (monto_max) {
         whereClause.monto_referencial = {
           ...whereClause.monto_referencial,
-          [Op.lte]: monto_max
+          [Op.lte]: parseFloat(monto_max)
+        };
+      }
+
+      // Filtros de Fecha
+      if (fecha_desde) {
+        whereClause.fecha_publicacion = {
+          ...whereClause.fecha_publicacion,
+          [Op.gte]: new Date(fecha_desde)
+        };
+      }
+
+      if (fecha_hasta) {
+        whereClause.fecha_publicacion = {
+          ...whereClause.fecha_publicacion,
+          [Op.lte]: new Date(fecha_hasta + 'T23:59:59')
         };
       }
 
       if (search_text) {
         whereClause[Op.or] = [
+          { descripcion_objeto: { [Op.iLike]: `%${search_text}%` } },
           { objeto_contratacion: { [Op.iLike]: `%${search_text}%` } },
+          { nombre_entidad: { [Op.iLike]: `%${search_text}%` } },
           { entidad_nombre: { [Op.iLike]: `%${search_text}%` } },
+          { nomenclatura: { [Op.iLike]: `%${search_text}%` } },
           { rubro: { [Op.iLike]: `%${search_text}%` } }
         ];
       }
@@ -137,10 +173,14 @@ class ProcesosService {
     try {
       const whereClause = {
         [Op.or]: [
+          { descripcion_objeto: { [Op.iLike]: `%${query}%` } },
           { objeto_contratacion: { [Op.iLike]: `%${query}%` } },
           { entidad_nombre: { [Op.iLike]: `%${query}%` } },
+          { nombre_entidad: { [Op.iLike]: `%${query}%` } },
           { tipo_proceso: { [Op.iLike]: `%${query}%` } },
-          { rubro: { [Op.iLike]: `%${query}%` } }
+          { nomenclatura: { [Op.iLike]: `%${query}%` } },
+          { rubro: { [Op.iLike]: `%${query}%` } },
+          { departamento: { [Op.iLike]: `%${query}%` } }
         ]
       };
 
@@ -158,7 +198,8 @@ class ProcesosService {
         total: count,
         page: parseInt(page),
         size: parseInt(size),
-        results: rows
+        pages: Math.ceil(count / size),
+        items: rows
       };
     } catch (error) {
       console.error('Error en searchProcesosByText:', error);

@@ -6,8 +6,7 @@ import {
   DocumentTextIcon,
   CalendarIcon,
   CurrencyDollarIcon,
-  BuildingOfficeIcon,
-  ChatBubbleLeftRightIcon
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import { useProcesos, useSearchProcesos } from '../hooks/useProcesos';
 import { Card } from '../components/ui/Card';
@@ -16,20 +15,17 @@ import { LoadingSpinner, LoadingList } from '../components/ui/Loading';
 import { ErrorAlert } from '../components/ui/Alert';
 import { Pagination } from '../components/ui/Pagination';
 import { utils } from '../services/seaceService';
-import { useChatbot } from '../hooks/useChatbot';
-import { Chatbot } from '../components/chatbot/Chatbot';
 
 export const Catalog = () => {
   const [filters, setFilters] = useState({
-    tipo_proceso: '',
-    estado_proceso: '',
+    objeto_contratacion: '',
     entidad_nombre: '',
     monto_min: '',
     monto_max: '',
-    categoria_proyecto: ''
+    fecha_desde: '',
+    fecha_hasta: ''
   });
 
-  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,8 +45,6 @@ export const Catalog = () => {
     search,
     clearResults
   } = useSearchProcesos();
-
-  const { messages, sendMessage } = useChatbot();
 
   // Debounced search
   const debouncedSearch = utils.debounce((query) => {
@@ -89,12 +83,12 @@ export const Catalog = () => {
 
   const clearFilters = () => {
     setFilters({
-      tipo_proceso: '',
-      estado_proceso: '',
+      objeto_contratacion: '',
       entidad_nombre: '',
       monto_min: '',
       monto_max: '',
-      categoria_proyecto: ''
+      fecha_desde: '',
+      fecha_hasta: ''
     });
     fetchProcesos({ page: 1, limit: 20 });
     setCurrentPage(1);
@@ -111,24 +105,6 @@ export const Catalog = () => {
 
   const displayProcesos = searchQuery.trim() ? searchResults : procesos;
   const isSearchMode = searchQuery.trim().length > 0;
-
-  // Agregar funcionalidad del chatbot flotante
-  const FloatingChatbot = () => (
-    <div className="chatbot-container">
-      {messages.map((message, index) => (
-        <div key={index} className={`message ${message.type}`}>
-          {message.content}
-        </div>
-      ))}
-      <input
-        type="text"
-        placeholder="Escribe tu mensaje..."
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') sendMessage(e.target.value);
-        }}
-      />
-    </div>
-  );
 
   return (
     <div className="min-h-full">
@@ -186,105 +162,109 @@ export const Catalog = () => {
           {/* Filters Panel */}
           {showFilters && (
             <div className="border-t pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Objeto de Contratación (Principal) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo de Proceso
+                    <span className="flex items-center">
+                      📋 Objeto de Contratación
+                      <span className="ml-1 text-xs text-gray-500">(Requerido)</span>
+                    </span>
                   </label>
                   <select
-                    value={filters.tipo_proceso}
-                    onChange={(e) => handleFilterChange('tipo_proceso', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-seace-blue focus:border-seace-blue"
+                    value={filters.objeto_contratacion}
+                    onChange={(e) => handleFilterChange('objeto_contratacion', e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-seace-blue focus:border-seace-blue font-medium"
                   >
-                    <option value="">Todos</option>
-                    <option value="LP">Licitación Pública</option>
-                    <option value="CP">Concurso Público</option>
-                    <option value="ADS">Adjudicación Directa Selectiva</option>
-                    <option value="ADU">Adjudicación Directa de Urgencia</option>
-                    <option value="ME">Menor Cuantía</option>
+                    <option value="">Todos los tipos</option>
+                    <option value="Servicio">🔧 Servicio</option>
+                    <option value="Bien">📦 Bien</option>
+                    <option value="Consultoría de Obra">🏗️ Consultoría de Obra</option>
+                    <option value="Obra">🏢 Obra</option>
                   </select>
                 </div>
 
+                {/* Entidad */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Estado del Proceso
-                  </label>
-                  <select
-                    value={filters.estado_proceso}
-                    onChange={(e) => handleFilterChange('estado_proceso', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-seace-blue focus:border-seace-blue"
-                  >
-                    <option value="">Todos</option>
-                    <option value="En proceso">En proceso</option>
-                    <option value="Adjudicado">Adjudicado</option>
-                    <option value="Desierto">Desierto</option>
-                    <option value="Cancelado">Cancelado</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Entidad
+                    🏛️ Entidad
                   </label>
                   <input
                     type="text"
-                    placeholder="Nombre de la entidad"
+                    placeholder="Ej: Ministerio, Gobierno Regional..."
                     value={filters.entidad_nombre}
                     onChange={(e) => handleFilterChange('entidad_nombre', e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-seace-blue focus:border-seace-blue"
                   />
                 </div>
 
+                {/* Monto Mínimo */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Categoría del Proyecto
-                  </label>
-                  <select
-                    value={filters.categoria_proyecto}
-                    onChange={(e) => handleFilterChange('categoria_proyecto', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-seace-blue focus:border-seace-blue"
-                  >
-                    <option value="">Todas</option>
-                    <option value="TI">Tecnologías de la Información</option>
-                    <option value="INFRA">Infraestructura</option>
-                    <option value="CONSULTORIA">Consultoría</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Monto Mínimo (S/)
+                    💰 Monto Mínimo (S/)
                   </label>
                   <input
                     type="number"
-                    placeholder="0"
+                    placeholder="Ej: 10000"
                     value={filters.monto_min}
                     onChange={(e) => handleFilterChange('monto_min', e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-seace-blue focus:border-seace-blue"
                   />
                 </div>
 
+                {/* Monto Máximo */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Monto Máximo (S/)
+                    💰 Monto Máximo (S/)
                   </label>
                   <input
                     type="number"
-                    placeholder="9999999"
+                    placeholder="Ej: 500000"
                     value={filters.monto_max}
                     onChange={(e) => handleFilterChange('monto_max', e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-seace-blue focus:border-seace-blue"
                   />
                 </div>
+
+                {/* Fecha Desde */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📅 Publicado desde
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.fecha_desde}
+                    onChange={(e) => handleFilterChange('fecha_desde', e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-seace-blue focus:border-seace-blue"
+                  />
+                </div>
+
+                {/* Fecha Hasta */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📅 Publicado hasta
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.fecha_hasta}
+                    onChange={(e) => handleFilterChange('fecha_hasta', e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-seace-blue focus:border-seace-blue"
+                  />
+                </div>
               </div>
 
-              <div className="flex justify-end space-x-2 mt-4">
-                <Button variant="outline" onClick={clearFilters}>
-                  Limpiar
-                </Button>
-                <Button onClick={applyFilters}>
-                  Aplicar Filtros
-                </Button>
+              <div className="flex justify-between items-center mt-4 pt-4 border-t">
+                <p className="text-sm text-gray-600">
+                  💡 <span className="font-medium">Tip:</span> Combina filtros para resultados más precisos
+                </p>
+                <div className="flex space-x-2">
+                  <Button variant="outline" onClick={clearFilters}>
+                    Limpiar
+                  </Button>
+                  <Button onClick={applyFilters} className="bg-seace-blue hover:bg-seace-blue-dark">
+                    Aplicar Filtros
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -342,60 +322,6 @@ export const Catalog = () => {
       )}
       </div>
 
-      {/* Floating Chatbot Button */}
-      <div className="fixed bottom-8 right-8 z-50">
-        {!isChatbotOpen ? (
-          <button
-            onClick={() => setIsChatbotOpen(true)}
-            className="group relative bg-gradient-to-r from-seace-blue to-seace-blue-dark hover:from-seace-blue-dark hover:to-seace-blue text-white p-4 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 hover:shadow-3xl"
-          >
-            <ChatBubbleLeftRightIcon className="w-6 h-6" />
-            <div className="absolute -top-2 -right-2 w-3 h-3 bg-seace-green rounded-full animate-pulse"></div>
-            
-            {/* Tooltip */}
-            <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-              Pregúntame sobre procesos SEACE
-              <div className="absolute top-full right-3 w-0 h-0 border-l-2 border-r-2 border-t-4 border-transparent border-t-gray-900"></div>
-            </div>
-          </button>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-96 h-[600px] flex flex-col animate-slide-up overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-seace-blue to-seace-blue-dark text-white rounded-t-2xl">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                  <ChatBubbleLeftRightIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Asistente SEACE IA</h3>
-                  <p className="text-xs text-seace-blue-light">Consulta procesos públicos</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsChatbotOpen(false)}
-                className="text-white/80 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            {/* Chat Content */}
-            <div className="flex-1 overflow-hidden">
-              {/* Renderizar el chatbot flotante */}
-              {isChatbotOpen && <Chatbot />}
-            </div>
-            
-            {/* Status Bar */}
-            <div className="px-4 py-2 bg-gray-50 border-t text-center">
-              <p className="text-xs text-gray-500">
-                ✨ Potenciado por Gemini AI
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 };

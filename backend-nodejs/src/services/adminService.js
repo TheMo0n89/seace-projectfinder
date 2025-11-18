@@ -27,7 +27,20 @@ class AdminService {
         where: whereClause,
         offset,
         limit: size,
-        order: [['created_at', 'DESC']]
+        order: [['created_at', 'DESC']],
+        attributes: {
+          include: [
+            [
+              // Subconsulta para contar recomendaciones
+              require('sequelize').literal(`(
+                SELECT COUNT(*)::int
+                FROM user_recommendations
+                WHERE user_recommendations.user_id = "User".id
+              )`),
+              'recommendations_count'
+            ]
+          ]
+        }
       });
 
       return {

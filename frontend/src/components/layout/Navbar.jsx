@@ -12,9 +12,12 @@ import {
   ArrowRightOnRectangleIcon,
   UserIcon
 } from '@heroicons/react/24/outline';
+import NotificationBell from '../notifications/NotificationBell';
+import ProfileModal from '../profile/ProfileModal';
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, user, logout, isAdmin } = useAuth();
@@ -26,7 +29,7 @@ export const Navbar = () => {
   const privateNavigation = [
     { name: 'Inicio', href: '/', icon: HomeIcon },
     { name: 'Catálogo', href: '/catalog', icon: MagnifyingGlassIcon },
-    { name: 'Dashboard', href: '/dashboard', icon: ChartBarIcon }
+    // { name: 'Dashboard', href: '/dashboard', icon: ChartBarIcon }
   ];
 
   const adminNavigation = [
@@ -86,8 +89,20 @@ export const Navbar = () => {
             <div className="flex items-center space-x-2 ml-4 border-l border-gray-200 pl-4">
               {isAuthenticated ? (
                 <>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <UserIcon className="w-4 h-4" />
+                  {/* Notification Bell */}
+                  <NotificationBell />
+
+                  {/* User Profile Button */}
+                  <button
+                    onClick={() => setIsProfileModalOpen(true)}
+                    className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                    title="Perfil"
+                  >
+                    <UserIcon className="w-6 h-6" />
+                  </button>
+
+                  {/* Username Display */}
+                  <div className="flex items-center space-x-2 text-sm text-gray-600 px-2">
                     <span>{user?.username}</span>
                     {user?.role && (
                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
@@ -95,6 +110,8 @@ export const Navbar = () => {
                       </span>
                     )}
                   </div>
+
+                  {/* Logout Button */}
                   <button
                     onClick={handleLogout}
                     className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
@@ -193,6 +210,18 @@ export const Navbar = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Profile Modal */}
+      {isAuthenticated && (
+        <ProfileModal 
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          onProfileUpdated={() => {
+            // Opcional: Recargar datos del usuario si es necesario
+            console.log('Perfil actualizado');
+          }}
+        />
       )}
     </nav>
   );

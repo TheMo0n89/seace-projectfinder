@@ -15,25 +15,40 @@ const Preferencia = sequelize.define('Preferencia', {
   user_id: {
     type: DataTypes.UUID,
     allowNull: false,
+    unique: true,
     references: {
       model: User,
       key: 'id'
     },
     onDelete: 'CASCADE'
   },
-  keywords: {
+  // Campos del perfil simplificado
+  carrera: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  regiones_interes: {
     type: DataTypes.ARRAY(DataTypes.STRING),
     allowNull: true,
     defaultValue: []
   },
-  embedding: {
-    type: DataTypes.ARRAY(DataTypes.FLOAT),
+  monto_min: {
+    type: DataTypes.DECIMAL(15, 2),
     allowNull: true
   },
-  profile_data: {
-    type: DataTypes.JSONB,
+  monto_max: {
+    type: DataTypes.DECIMAL(15, 2),
+    allowNull: true
+  },
+  tipos_proyecto: {
+    type: DataTypes.ARRAY(DataTypes.STRING),
     allowNull: true,
-    defaultValue: {}
+    defaultValue: []
+  },
+  notification_frequency: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    defaultValue: 'semanal'
   },
   created_at: {
     type: DataTypes.DATE,

@@ -40,6 +40,16 @@ const ETLLog = sequelize.define('ETLLog', {
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  inserted_count: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0
+  },
+  updated_count: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0
+  },
   duration_ms: {
     type: DataTypes.INTEGER,
     allowNull: true

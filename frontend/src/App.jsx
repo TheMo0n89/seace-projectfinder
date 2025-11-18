@@ -1,7 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
+import { Chatbot } from './components/chatbot/Chatbot';
 
 // Componentes de autenticación
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
@@ -23,6 +25,7 @@ import { NotFound } from './pages/NotFound';
 import Login from './pages/Login';
 import LogsDashboard from './pages/LogsDashboard';
 import { Register } from './pages/Register';
+import NotificationsPage from './pages/NotificationsPage';
 
 // Componente para tracking de navegación
 function NavigationTracker() {
@@ -82,9 +85,15 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
-      <Route path="/dashboard" element={
+      {/* <Route path="/dashboard" element={
         <ProtectedRoute>
           <Dashboard />
+        </ProtectedRoute>
+      } /> */}
+      
+      <Route path="/notifications" element={
+        <ProtectedRoute>
+          <NotificationsPage />
         </ProtectedRoute>
       } />
       
@@ -114,6 +123,8 @@ function AppRoutes() {
 }
 
 function App() {
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+
   useEffect(() => {
     // Log de inicio de la aplicación
     logger.info('Application started', {
@@ -154,6 +165,30 @@ function App() {
           <ErrorBoundary componentName="Footer">
             <Footer />
           </ErrorBoundary>
+
+          {/* Chatbot Flotante Global */}
+          <div className="fixed bottom-8 right-8 z-50">
+            {!isChatbotOpen ? (
+              <button
+                onClick={() => setIsChatbotOpen(true)}
+                className="group relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white p-4 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110"
+                title="Abrir Asistente IA"
+              >
+                <ChatBubbleLeftRightIcon className="w-6 h-6" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                
+                {/* Tooltip */}
+                <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                  Pregúntame sobre procesos SEACE
+                  <div className="absolute top-full right-3 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                </div>
+              </button>
+            ) : (
+              <div className="animate-slide-up">
+                <Chatbot onClose={() => setIsChatbotOpen(false)} />
+              </div>
+            )}
+          </div>
         </div>
       </Router>
     </ErrorBoundary>

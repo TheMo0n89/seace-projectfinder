@@ -225,9 +225,9 @@ export const useUsers = () => {
       setLoading(true);
       setError(null);
       
-      const { authService } = await import('../services/seaceService');
-      const response = await authService.getUsers();
-      setUsers(response);
+      const { adminService } = await import('../services/seaceService');
+      const response = await adminService.getUsers();
+      setUsers(response.data?.items || response.data || []);
     } catch (err) {
       setError(err.message);
       setUsers([]);

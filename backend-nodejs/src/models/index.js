@@ -14,6 +14,10 @@ const ScrapingTask = require('./ScrapingTask');
 const ChatbotLog = require('./ChatbotLog');
 const Configuracion = require('./Configuracion');
 const ETLLog = require('./ETLLog');
+const UserRecommendation = require('./UserRecommendation');
+const RecommendationClick = require('./RecommendationClick');
+const ChatSession = require('./ChatSession');
+const ChatMessage = require('./ChatMessage');
 
 // Importar modelos con definiciones básicas
 const { DataTypes } = require('sequelize');
@@ -65,12 +69,22 @@ const UserInteraction = require('./UserInteraction');
 User.hasMany(Recomendacion, { foreignKey: 'user_id', as: 'recomendaciones' });
 User.hasOne(Preferencia, { foreignKey: 'user_id', as: 'preferencia' });
 User.hasMany(UserInteraction, { foreignKey: 'user_id', as: 'interacciones' });
+User.hasMany(UserRecommendation, { foreignKey: 'user_id', as: 'user_recommendations' });
+User.hasMany(ChatSession, { foreignKey: 'user_id', as: 'chat_sessions' });
 
 // Proceso relationships
 Proceso.hasMany(Anexo, { foreignKey: 'proceso_id', as: 'anexos' });
 Proceso.hasOne(ProcesoEmbedding, { foreignKey: 'proceso_id', as: 'embedding' });
 Proceso.hasMany(Recomendacion, { foreignKey: 'proceso_id', as: 'recomendaciones' });
 Proceso.hasMany(UserInteraction, { foreignKey: 'proceso_id', as: 'interacciones' });
+Proceso.hasMany(UserRecommendation, { foreignKey: 'proceso_id', as: 'user_recommendations' });
+
+// ChatSession relationships
+ChatSession.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+ChatSession.hasMany(ChatMessage, { foreignKey: 'session_id', as: 'messages' });
+
+// ChatMessage relationships
+ChatMessage.belongsTo(ChatSession, { foreignKey: 'session_id', as: 'session' });
 
 // Reverse relationships
 Recomendacion.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
@@ -80,6 +94,9 @@ Preferencia.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 UserInteraction.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 UserInteraction.belongsTo(Proceso, { foreignKey: 'proceso_id', as: 'proceso' });
+
+UserRecommendation.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+UserRecommendation.belongsTo(Proceso, { foreignKey: 'proceso_id', as: 'proceso' });
 
 Anexo.belongsTo(Proceso, { foreignKey: 'proceso_id', as: 'proceso' });
 ProcesoEmbedding.belongsTo(Proceso, { foreignKey: 'proceso_id', as: 'proceso' });
@@ -93,9 +110,13 @@ module.exports = {
   Recomendacion,
   Preferencia,
   UserInteraction,
+  UserRecommendation,
+  RecommendationClick,
   ScrapingTask,
   ChatbotLog,
   Configuracion,
   ETLLog,
+  ChatSession,
+  ChatMessage,
   sequelize
 };

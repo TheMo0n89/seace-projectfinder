@@ -59,6 +59,10 @@ export const AuthProvider = ({ children }) => {
       // Configurar header de autorización
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
+      // Disparar evento personalizado para que otros componentes sepan del login exitoso
+      // Esto permite que useAutoGenerateRecommendations se ejecute automáticamente
+      window.dispatchEvent(new CustomEvent('user-logged-in', { detail: userData }));
+      
       return { success: true, user: userData };
     } catch (error) {
       const message = error.response?.data?.message || error.response?.data?.detail || 'Error al iniciar sesión';

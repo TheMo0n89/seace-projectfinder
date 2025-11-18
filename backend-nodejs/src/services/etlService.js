@@ -239,14 +239,35 @@ class ETLService {
       }
 
       // ✅ GUARDAR PROCESOS EN LA BASE DE DATOS CON LOGGING MEJORADO
+      // NUEVA LÓGICA: Si maxProcesses está definido, solo contar inserciones nuevas hacia el límite
       logger.info('═══ INICIANDO GUARDADO EN BD ═══');
       let savedCount = 0;
       let updateCount = 0;
       let errorCount = 0;
       const errorDetails = [];
+      const maxNewProcesses = params.maxProcesses || null;
+      let newProcessesInserted = 0;
 
       for (const procesoData of results) {
         try {
+          // Si hay límite de maxProcesses y ya alcanzamos el número de NUEVOS, solo actualizar
+          if (maxNewProcesses && newProcessesInserted >= maxNewProcesses) {
+            // Verificar si existe
+            const existingProceso = await Proceso.findOne({
+              where: { id_proceso: procesoData.id_proceso }
+            });
+            
+            if (existingProceso) {
+              // Solo actualizar procesos existentes
+              const procesoMapeado = this.mapScrapeDataToProcesoSchema(procesoData);
+              await existingProceso.update(procesoMapeado);
+              updateCount++;
+              logger.debug(`🔄 Proceso ACTUALIZADO (límite alcanzado): ${procesoData.id_proceso}`);
+            }
+            // Si no existe y ya alcanzamos el límite, no hacer nada
+            continue;
+          }
+
           // MAPEO EXPLÍCITO: Solo campos válidos de la tabla procesos
           const procesoMapeado = this.mapScrapeDataToProcesoSchema(procesoData);
 
@@ -263,7 +284,8 @@ class ETLService {
 
           if (created) {
             savedCount++;
-            logger.debug(`✅ Proceso INSERTADO: ${procesoMapeado.id_proceso}`);
+            newProcessesInserted++;
+            logger.debug(`✅ Proceso INSERTADO: ${procesoMapeado.id_proceso} (${newProcessesInserted}/${maxNewProcesses || 'sin límite'})`);
           } else {
             // Si ya existe, actualizar si hay cambios
             await proceso.update(procesoMapeado);
@@ -291,13 +313,15 @@ class ETLService {
         logger.warn('Detalles de errores:', errorDetails);
       }
 
-      // Actualizar log de ETL
+      // Actualizar log de ETL con contadores separados
       const duration = Date.now() - startTime;
       await ETLLog.update(
         {
           status: 'completed',
-          message: `Scraping completado: ${savedCount} nuevos procesos, ${updateCount} actualizados, ${errorCount} errores. Total: ${results.length} procesados`,
+          message: `Scraping completado: ${savedCount} NUEVOS, ${updateCount} actualizados, ${errorCount} errores (Total procesado: ${results.length})`,
           process_count: savedCount + updateCount,
+          inserted_count: savedCount,
+          updated_count: updateCount,
           error_count: errorCount,
           duration_ms: duration
         },
@@ -336,11 +360,12 @@ class ETLService {
 
   async getETLLogs(filters = {}) {
     try {
-      const { page = 1, size = 50, operation_type, status } = filters;
+      const { page = 1, size = 50, operation_type, status, operation_id } = filters;
       const whereClause = {};
 
       if (operation_type) whereClause.operation_type = operation_type;
       if (status) whereClause.status = status;
+      if (operation_id) whereClause.operation_id = operation_id;
 
       const offset = (page - 1) * size;
       const { count, rows } = await ETLLog.findAndCountAll({

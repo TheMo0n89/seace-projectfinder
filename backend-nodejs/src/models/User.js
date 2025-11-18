@@ -6,9 +6,9 @@ const { sequelize } = require('../config/database');
 
 const User = sequelize.define('User', {
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     primaryKey: true,
-    autoIncrement: true
+    defaultValue: DataTypes.UUIDV4
   },
   username: {
     type: DataTypes.STRING(50),
@@ -36,6 +36,14 @@ const User = sequelize.define('User', {
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  profile_completed: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  last_recommendations_generated_at: {
+    type: DataTypes.DATE,
+    allowNull: true
   },
   created_at: {
     type: DataTypes.DATE,

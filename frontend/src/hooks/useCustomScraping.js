@@ -77,10 +77,13 @@ export const useCustomScraping = () => {
         await new Promise(resolve => setTimeout(resolve, 1000)); // Esperar 1 segundo
         
         const logs = await fetchLogsByOperation(opId);
-        if (logs && logs.logs && logs.logs.length > 0) {
-          const latestLog = logs.logs[0];
+        // logs ya es un array de items
+        if (logs && logs.length > 0) {
+          const latestLog = logs[0];
           if (latestLog.status === 'completed' || latestLog.status === 'failed') {
             completed = true;
+            // Recargar la lista de logs para mostrar el estado actualizado
+            await fetchEtlLogs();
           }
         }
       }
@@ -101,8 +104,8 @@ export const useCustomScraping = () => {
       
       const response = await etlService.getETLLogs({ size: 50 });
       
-      // La respuesta viene directa (etlService retorna response.data)
-      const logs = response.items || [];
+      // etlService.getETLLogs retorna response.data, que contiene { data: { items, total, etc } }
+      const logs = response.data?.items || response.items || [];
       setEtlLogs(logs);
       return logs;
     } catch (err) {
@@ -121,7 +124,8 @@ export const useCustomScraping = () => {
         operation_id: opId,
         size: 10 
       });
-      return response.data || response;
+      // Retornar los items correctamente
+      return response.data?.items || response.items || [];
     } catch (err) {
       console.error('Error obteniendo logs por operación:', err);
       return null;

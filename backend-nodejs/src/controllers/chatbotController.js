@@ -22,7 +22,9 @@ class ChatbotController {
 
   async query(req, res, next) {
     try {
-      const { query, session_id } = req.body;
+      const { query, session_id, use_personalization } = req.body;
+      const userId = req.user ? req.user.id : null; // Obtener userId si está autenticado
+      const usePersonalization = use_personalization === true; // Convertir a boolean
 
       if (!query) {
         return res.status(400).json({
@@ -31,7 +33,7 @@ class ChatbotController {
         });
       }
 
-      const response = await chatbotService.processQuery(query, session_id);
+      const response = await chatbotService.processQuery(query, session_id, userId, usePersonalization);
 
       res.json({
         success: true,
