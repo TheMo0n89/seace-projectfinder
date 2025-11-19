@@ -2,6 +2,7 @@
  * Controlador de autenticación
  */
 const authService = require('../services/authService');
+const interactionService = require('../services/interactionService');
 const { User } = require('../models');
 const logger = require('../config/logger');
 
@@ -108,6 +109,11 @@ class AuthController {
       // Actualizar último login en segundo plano
       authService.updateLastLogin(user.id).catch(err => {
         logger.error(`Error actualizando último login: ${err.message}`);
+      });
+
+      // Registrar interacción de login
+      interactionService.registrarLogin(user.id).catch(err => {
+        logger.error(`Error registrando interacción de login: ${err.message}`);
       });
 
       logger.info(`🔑 Usuario '${user.username}' (${user.role}) ha iniciado sesión`);

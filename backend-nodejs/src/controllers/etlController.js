@@ -147,6 +147,59 @@ class ETLController {
   }
 
   /**
+   * Obtener detalles de una operación ETL específica
+   */
+  async getOperationDetails(req, res, next) {
+    try {
+      const { operation_id } = req.params;
+      const details = await etlService.getOperationDetails(operation_id);
+      
+      if (!details) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Operación no encontrada' 
+        });
+      }
+
+      // Evitar cache
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      
+      res.json({
+        success: true,
+        data: details
+      });
+    } catch (error) {
+      logger.error(`Error en getOperationDetails: ${error.message}`);
+      next(error);
+    }
+  }
+
+  /**
+   * Obtener progreso en tiempo real de una operación ETL
+   */
+  async getOperationProgress(req, res, next) {
+    try {
+      const { operation_id } = req.params;
+      const progress = await etlService.getOperationProgress(operation_id);
+      
+      // Evitar cache
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      
+      res.json({
+        success: true,
+        data: progress
+      });
+    } catch (error) {
+      logger.error(`Error en getOperationProgress: ${error.message}`);
+      next(error);
+    }
+  }
+
+  /**
    * Listar archivos de exportación
    */
   async listExportedFiles(req, res, next) {

@@ -159,7 +159,11 @@ class ETLService {
         operation_id: operationId,
         status: 'running',
         message: 'Iniciando proceso de scraping',
-        search_params: params
+        search_params: params,
+        paso_actual: 0,
+        paso_total: 0,
+        porcentaje: 0,
+        mensaje_actual: 'Inicializando scraper...'
       });
 
       logger.info(`Scraping iniciado: ${operationId}`, { params });
@@ -180,6 +184,25 @@ class ETLService {
     }
   }
 
+  // Método para actualizar progreso en tiempo real
+  async updateProgress(operationId, pasoActual, pasoTotal, mensajeActual) {
+    try {
+      const porcentaje = pasoTotal > 0 ? Math.round((pasoActual / pasoTotal) * 100) : 0;
+      
+      await ETLLog.update({
+        paso_actual: pasoActual,
+        paso_total: pasoTotal,
+        porcentaje: porcentaje,
+        mensaje_actual: mensajeActual,
+        updated_at: new Date()
+      }, {
+        where: { operation_id: operationId }
+      });
+    } catch (error) {
+      logger.error(`Error al actualizar progreso: ${error.message}`);
+    }
+  }
+
   async performScraping(operationId, params, startTime) {
     const SeaceScraper = require('../scraper/SeaceScraper');
     const exportService = require('./exportService');
@@ -190,19 +213,47 @@ class ETLService {
       await scraper.initialize();
       logger.info(`Scraper inicializado para operación ${operationId}`);
 
-      // Ejecutar búsqueda
-      const results = await scraper.searchProcesses({
-        keywords: params.keywords || ['software'],
-        objetoContratacion: params.objetoContratacion || 'Servicio',
+      // Ejecutar búsqueda - SOLO pasar parámetros que el usuario especificó
+      const searchParams = {
         anio: params.anio || new Date().getFullYear().toString(),
-        maxProcesses: params.maxProcesses || 100,
-        departamento: params.departamento,
-        estadoProceso: params.estadoProceso,
-        entidad: params.entidad,
-        tipoProceso: params.tipoProceso
-      });
+        maxProcesses: params.maxProcesses || 100
+      };
+      
+      // Solo agregar parámetros si fueron especificados
+      if (params.keywords && params.keywords.length > 0) {
+        searchParams.keywords = params.keywords;
+      }
+      if (params.objetoContratacion) {
+        searchParams.objetoContratacion = params.objetoContratacion;
+      }
+      if (params.departamento) {
+        searchParams.departamento = params.departamento;
+      }
+      if (params.estadoProceso) {
+        searchParams.estadoProceso = params.estadoProceso;
+      }
+      if (params.entidad) {
+        searchParams.entidad = params.entidad;
+      }
+      if (params.tipoProceso) {
+        searchParams.tipoProceso = params.tipoProceso;
+      }
 
-      logger.info(`Scraping completado: ${results.length} procesos encontrados`);
+      // Log de diagnóstico: qué parámetros se envían al scraper
+      logger.info('═══════════════════════════════════════════════════════');
+      logger.info('🔍 PARÁMETROS ENVIADOS AL SCRAPER:');
+      logger.info(`   • objetoContratacion: "${searchParams.objetoContratacion || 'NO ESPECIFICADO'}"`);
+      logger.info(`   • anio: "${searchParams.anio}"`);
+      logger.info(`   • keywords: ${searchParams.keywords?.join(', ') || 'Sin keywords'}`);
+      logger.info(`   • maxProcesses: ${searchParams.maxProcesses}`);
+      logger.info('═══════════════════════════════════════════════════════');
+      
+      const results = await scraper.searchProcesses(searchParams);
+
+      logger.info(`Scraping inicial completado: ${results.length} procesos encontrados`);
+      
+      // Actualizar progreso: Extracción completada
+      await this.updateProgress(operationId, 1, 2, `Extracción completada: ${results.length} procesos encontrados`);
 
       // ✅ LOGGING: Mostrar procesos extraídos
       logger.info('═══ PROCESOS EXTRAÍDOS DEL SCRAPING ═══');
@@ -245,12 +296,36 @@ class ETLService {
       let updateCount = 0;
       let errorCount = 0;
       const errorDetails = [];
+      const insertedProcesses = [];
+      const updatedProcesses = [];
       const maxNewProcesses = params.maxProcesses || null;
       let newProcessesInserted = 0;
 
-      for (const procesoData of results) {
+      for (let idx = 0; idx < results.length; idx++) {
+        const procesoData = results[idx];
+        
+        // Actualizar progreso cada 5 procesos
+        // Sistema 2 pasos: paso 1 (scraping) = 0-50%, paso 2 (guardado) = 50-100%
+        if (idx % 5 === 0) {
+          const subProgress = idx / results.length; // 0.0 a 1.0
+          const pasoActual = 1 + subProgress; // 1.0 a 2.0
+          await this.updateProgress(
+            operationId, 
+            pasoActual, 
+            2, 
+            `Guardando procesos: ${idx}/${results.length}`
+          );
+          // Actualizar contadores en BD
+          await ETLLog.update({
+            inserted_count: savedCount,
+            updated_count: updateCount,
+            error_count: errorCount
+          }, { where: { operation_id: operationId } });
+          logger.info(`📊 Progreso guardado: ${Math.round(subProgress * 100)}% - Insertados: ${savedCount}, Actualizados: ${updateCount}, Errores: ${errorCount}`);
+        }
+        
         try {
-          // Si hay límite de maxProcesses y ya alcanzamos el número de NUEVOS, solo actualizar
+          // Si hay límite de maxProcesses y ya alcanzamos el número de NUEVOS, solo actualizar existentes
           if (maxNewProcesses && newProcessesInserted >= maxNewProcesses) {
             // Verificar si existe
             const existingProceso = await Proceso.findOne({
@@ -258,13 +333,23 @@ class ETLService {
             });
             
             if (existingProceso) {
-              // Solo actualizar procesos existentes
+              // Solo actualizar procesos existentes, no crear nuevos
               const procesoMapeado = this.mapScrapeDataToProcesoSchema(procesoData);
               await existingProceso.update(procesoMapeado);
               updateCount++;
-              logger.debug(`🔄 Proceso ACTUALIZADO (límite alcanzado): ${procesoData.id_proceso}`);
+              updatedProcesses.push({
+                id_proceso: procesoData.id_proceso,
+                objeto_contratacion: procesoData.objeto_contratacion,
+                nombre_entidad: procesoData.nombre_entidad,
+                monto_referencial: procesoData.monto_referencial,
+                departamento: procesoData.departamento,
+                estado_proceso: procesoData.estado_proceso
+              });
+              logger.debug(`🔄 Proceso ACTUALIZADO (límite de nuevos alcanzado): ${procesoData.id_proceso}`);
+            } else {
+              // No existe y ya alcanzamos límite de nuevos: OMITIR
+              logger.debug(`⏭️  Proceso OMITIDO (límite alcanzado, no existe en BD): ${procesoData.id_proceso}`);
             }
-            // Si no existe y ya alcanzamos el límite, no hacer nada
             continue;
           }
 
@@ -285,11 +370,27 @@ class ETLService {
           if (created) {
             savedCount++;
             newProcessesInserted++;
+            insertedProcesses.push({
+              id_proceso: procesoData.id_proceso,
+              objeto_contratacion: procesoData.objeto_contratacion,
+              nombre_entidad: procesoData.nombre_entidad,
+              monto_referencial: procesoData.monto_referencial,
+              departamento: procesoData.departamento,
+              estado_proceso: procesoData.estado_proceso
+            });
             logger.debug(`✅ Proceso INSERTADO: ${procesoMapeado.id_proceso} (${newProcessesInserted}/${maxNewProcesses || 'sin límite'})`);
           } else {
             // Si ya existe, actualizar si hay cambios
             await proceso.update(procesoMapeado);
             updateCount++;
+            updatedProcesses.push({
+              id_proceso: procesoData.id_proceso,
+              objeto_contratacion: procesoData.objeto_contratacion,
+              nombre_entidad: procesoData.nombre_entidad,
+              monto_referencial: procesoData.monto_referencial,
+              departamento: procesoData.departamento,
+              estado_proceso: procesoData.estado_proceso
+            });
             logger.debug(`🔄 Proceso ACTUALIZADO: ${procesoMapeado.id_proceso}`);
           }
         } catch (err) {
@@ -313,7 +414,7 @@ class ETLService {
         logger.warn('Detalles de errores:', errorDetails);
       }
 
-      // Actualizar log de ETL con contadores separados
+      // Actualizar log de ETL con contadores separados y detalles
       const duration = Date.now() - startTime;
       await ETLLog.update(
         {
@@ -323,7 +424,15 @@ class ETLService {
           inserted_count: savedCount,
           updated_count: updateCount,
           error_count: errorCount,
-          duration_ms: duration
+          duration_ms: duration,
+          details: {
+            inserted_processes: insertedProcesses,
+            updated_processes: updatedProcesses,
+            error_processes: errorDetails.map(err => ({
+              id_proceso: err.id_proceso,
+              error_message: err.error
+            }))
+          }
         },
         {
           where: { operation_id: operationId }
@@ -331,6 +440,9 @@ class ETLService {
       );
 
       logger.info(`✅ Operación ${operationId} completada exitosamente en ${duration}ms`);
+      
+      // Actualizar progreso final: 100%
+      await this.updateProgress(operationId, results.length, results.length, '✅ Scraping completado');
 
     } catch (error) {
       logger.error(`Error durante scraping: ${error.message}`);
@@ -342,7 +454,9 @@ class ETLService {
           status: 'failed',
           message: `Error en scraping: ${error.message}`,
           error_count: 1,
-          duration_ms: duration
+          duration_ms: duration,
+          porcentaje: 100,
+          mensaje_actual: `❌ Error: ${error.message}`
         },
         {
           where: { operation_id: operationId }
@@ -456,6 +570,73 @@ class ETLService {
       };
     } catch (error) {
       logger.error(`Error en generateEmbeddings: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getOperationDetails(operationId) {
+    try {
+      const etlLog = await ETLLog.findOne({
+        where: { operation_id: operationId }
+      });
+
+      if (!etlLog) {
+        return null;
+      }
+
+      // Extraer detalles del JSONB
+      const details = etlLog.details || {};
+      
+      return {
+        operation_id: operationId,
+        operation_type: etlLog.operation_type,
+        status: etlLog.status,
+        message: etlLog.message,
+        inserted_count: etlLog.inserted_count || 0,
+        updated_count: etlLog.updated_count || 0,
+        error_count: etlLog.error_count || 0,
+        duration_ms: etlLog.duration_ms,
+        created_at: etlLog.created_at,
+        search_params: etlLog.search_params || {},
+        inserted_processes: details.inserted_processes || [],
+        updated_processes: details.updated_processes || [],
+        error_processes: details.error_processes || []
+      };
+    } catch (error) {
+      logger.error(`Error en getOperationDetails: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getOperationProgress(operationId) {
+    try {
+      const etlLog = await ETLLog.findOne({
+        where: { operation_id: operationId }
+      });
+
+      if (!etlLog) {
+        return {
+          status: 'not_found',
+          paso_actual: 0,
+          paso_total: 0,
+          porcentaje: 0,
+          mensaje_actual: 'Operación no encontrada'
+        };
+      }
+
+      return {
+        operation_id: operationId,
+        status: etlLog.status,
+        paso_actual: etlLog.paso_actual || 0,
+        paso_total: etlLog.paso_total || 0,
+        porcentaje: etlLog.porcentaje || 0,
+        mensaje_actual: etlLog.mensaje_actual || '',
+        inserted_count: etlLog.inserted_count || 0,
+        updated_count: etlLog.updated_count || 0,
+        error_count: etlLog.error_count || 0
+      };
+    } catch (error) {
+      logger.error(`Error en getOperationProgress: ${error.message}`);
       throw error;
     }
   }

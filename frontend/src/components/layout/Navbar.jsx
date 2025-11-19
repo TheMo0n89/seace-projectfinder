@@ -5,12 +5,14 @@ import {
   HomeIcon, 
   MagnifyingGlassIcon, 
   ChartBarIcon,
+  ChartPieIcon,
   CogIcon,
   Bars3Icon,
   XMarkIcon,
   InformationCircleIcon,
   ArrowRightOnRectangleIcon,
-  UserIcon
+  UserIcon,
+  BellIcon
 } from '@heroicons/react/24/outline';
 import NotificationBell from '../notifications/NotificationBell';
 import ProfileModal from '../profile/ProfileModal';
@@ -29,11 +31,12 @@ export const Navbar = () => {
   const privateNavigation = [
     { name: 'Inicio', href: '/', icon: HomeIcon },
     { name: 'Catálogo', href: '/catalog', icon: MagnifyingGlassIcon },
-    // { name: 'Dashboard', href: '/dashboard', icon: ChartBarIcon }
+    { name: 'Recomendaciones', href: '/notifications', icon: BellIcon }
   ];
 
   const adminNavigation = [
-    { name: 'Admin', href: '/admin', icon: CogIcon }
+    { name: 'Admin', href: '/admin', icon: CogIcon },
+    { name: 'Analytics', href: '/admin/analytics', icon: ChartPieIcon }
   ];
 
   const navigation = isAuthenticated 

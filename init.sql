@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS procesos (
     reiniciado_desde VARCHAR(255),
     codigo_snip VARCHAR(50),
     codigo_cui VARCHAR(50),
-    version_seace VARCHAR(10) DEFAULT '3',
+    version_seace VARCHAR(50) DEFAULT '3',
     source_url TEXT,
     pagina_scraping TEXT,
     fecha_scraping TIMESTAMP,
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS procesos (
     fecha_publicacion TIMESTAMP,
     fecha_limite_presentacion TIMESTAMP,
     monto_referencial NUMERIC(15,2),
-    moneda VARCHAR(10),
+    moneda VARCHAR(50),
     rubro VARCHAR(200),
     departamento VARCHAR(100),
     provincia VARCHAR(100),
@@ -226,6 +226,11 @@ CREATE TABLE IF NOT EXISTS etl_logs (
     duration_ms INTEGER,
     search_params JSONB,
     max_processes INTEGER,
+    -- Columnas para progreso en tiempo real
+    paso_actual INTEGER DEFAULT 0,
+    paso_total INTEGER DEFAULT 0,
+    porcentaje INTEGER DEFAULT 0,
+    mensaje_actual TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -276,6 +281,7 @@ CREATE INDEX IF NOT EXISTS idx_preferencia_user ON preferencias(user_id);
 CREATE INDEX IF NOT EXISTS idx_interactions_user ON user_interactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_interactions_proceso ON user_interactions(proceso_id);
 CREATE INDEX IF NOT EXISTS idx_interactions_tipo ON user_interactions(tipo_interaccion);
+CREATE INDEX IF NOT EXISTS idx_interactions_timestamp ON user_interactions(user_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_user_recommendations_user ON user_recommendations(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_recommendations_proceso ON user_recommendations(proceso_id);
 CREATE INDEX IF NOT EXISTS idx_user_recommendations_score ON user_recommendations(score DESC);

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardBody } from '../ui/Card';
 import { LoadingSpinner } from '../ui/Loading';
 import { ErrorAlert } from '../ui/Alert';
@@ -7,12 +7,22 @@ import {
   CheckCircleIcon, 
   ExclamationCircleIcon, 
   PlayIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import ETLOperationDetail from './ETLOperationDetail';
 
 const ETLLogs = ({ logs, loading, error, onRefresh }) => {
+  const [selectedOperationId, setSelectedOperationId] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const handleViewDetails = (operationId) => {
+    setSelectedOperationId(operationId);
+    setIsDetailOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -117,6 +127,9 @@ const ETLLogs = ({ logs, loading, error, onRefresh }) => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Fecha
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -155,6 +168,16 @@ const ETLLogs = ({ logs, loading, error, onRefresh }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(log.created_at)}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                      <button
+                        onClick={() => handleViewDetails(log.operation_id)}
+                        className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-seace-blue hover:bg-seace-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-seace-blue transition-colors"
+                        title="Ver detalles de la operación"
+                      >
+                        <EyeIcon className="w-4 h-4 mr-1" />
+                        Detalle
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -169,6 +192,13 @@ const ETLLogs = ({ logs, loading, error, onRefresh }) => {
             </p>
           </div>
         )}
+
+        {/* Modal de Detalle */}
+        <ETLOperationDetail 
+          isOpen={isDetailOpen}
+          onClose={() => setIsDetailOpen(false)}
+          operationId={selectedOperationId}
+        />
       </CardBody>
     </Card>
   );

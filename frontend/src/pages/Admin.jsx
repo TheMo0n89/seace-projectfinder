@@ -9,13 +9,16 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   UsersIcon,
-  UserIcon
+  UserIcon,
+  XMarkIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { useETLOperations, useUsers } from '../hooks/useAdmin';
 import { Card, CardHeader, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { LoadingSpinner } from '../components/ui/Loading';
 import { ErrorAlert, Alert } from '../components/ui/Alert';
+import UserProfileAnalytics from '../components/admin/UserProfileAnalytics';
 
 export const Admin = () => {
   const [activeTab, setActiveTab] = useState('etl');
@@ -249,6 +252,19 @@ const ETLOperations = ({ operations, actions }) => {
 };
 
 const UserManagement = ({ users, loading, error }) => {
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showUserDetailModal, setShowUserDetailModal] = useState(false);
+
+  const openUserDetail = (user) => {
+    setSelectedUser(user);
+    setShowUserDetailModal(true);
+  };
+
+  const closeUserDetail = () => {
+    setShowUserDetailModal(false);
+    setSelectedUser(null);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -378,6 +394,9 @@ const UserManagement = ({ users, loading, error }) => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Registro
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -463,6 +482,15 @@ const UserManagement = ({ users, loading, error }) => {
                           <span className="text-gray-400">N/A</span>
                         )}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => openUserDetail(user)}
+                          className="inline-flex items-center px-3 py-1.5 bg-seace-blue text-white rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                          <ChartBarIcon className="w-4 h-4 mr-1" />
+                          Ver Detalle
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -479,6 +507,63 @@ const UserManagement = ({ users, loading, error }) => {
           )}
         </CardBody>
       </Card>
+
+      {/* Modal de Detalle de Usuario */}
+      {showUserDetailModal && selectedUser && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            {/* Background overlay */}
+            <div 
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
+              aria-hidden="true"
+              onClick={closeUserDetail}
+            ></div>
+
+            {/* Modal panel */}
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
+              <div className="bg-white">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center text-white">
+                    <UserIcon className="w-6 h-6 mr-3" />
+                    <h3 className="text-xl font-semibold" id="modal-title">
+                      Detalle de Usuario
+                    </h3>
+                  </div>
+                  <button
+                    onClick={closeUserDetail}
+                    className="text-white hover:text-gray-200 transition-colors"
+                  >
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
+
+                {/* Body con scroll */}
+                <div className="max-h-[calc(100vh-200px)] overflow-y-auto px-6 py-6">
+                  <UserProfileAnalytics 
+                    userId={selectedUser.id} 
+                    userName={selectedUser.full_name || selectedUser.username}
+                    userEmail={selectedUser.email}
+                    userRole={selectedUser.role}
+                    lastLogin={selectedUser.last_login}
+                    createdAt={selectedUser.created_at}
+                  />
+                </div>
+
+                {/* Footer */}
+                <div className="bg-gray-50 px-6 py-4 flex justify-end">
+                  <button
+                    onClick={closeUserDetail}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -20,6 +20,7 @@ import { ProcessDetail } from './pages/ProcessDetail';
 import { Dashboard } from './pages/Dashboard';
 import { Admin } from './pages/Admin';
 import ETLAdmin from './pages/ETLAdmin';
+import Analytics from './pages/Analytics';
 import { About } from './pages/About';
 import { NotFound } from './pages/NotFound';
 import Login from './pages/Login';
@@ -107,6 +108,12 @@ function AppRoutes() {
       <Route path="/admin/etl" element={
         <ProtectedRoute requireAdmin={true}>
           <ETLAdmin />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/admin/analytics" element={
+        <ProtectedRoute requireAdmin={true}>
+          <Analytics />
         </ProtectedRoute>
       } />
       

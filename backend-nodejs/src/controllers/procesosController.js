@@ -2,6 +2,7 @@
  * Controlador de procesos
  */
 const procesosService = require('../services/procesosService');
+const interactionService = require('../services/interactionService');
 const logger = require('../config/logger');
 
 class ProcesosController {
@@ -49,6 +50,7 @@ class ProcesosController {
   async getProcesoDetail(req, res, next) {
     try {
       const { proceso_id } = req.params;
+      const userId = req.user ? req.user.id : null;
 
       const proceso = await procesosService.getProcesoById(proceso_id);
 
@@ -56,6 +58,13 @@ class ProcesosController {
         return res.status(404).json({
           success: false,
           message: 'Proceso no encontrado'
+        });
+      }
+
+      // Registrar interacción de click si el usuario está autenticado
+      if (userId) {
+        interactionService.registrarClickProceso(userId, proceso.id, proceso.nombre_entidad).catch(err => {
+          logger.error(`Error registrando interacción de click: ${err.message}`);
         });
       }
 

@@ -528,9 +528,32 @@ export const utils = {
   formatCurrency: (amount, currency = 'PEN') => {
     if (!amount) return 'No especificado';
     
+    // Normalizar nombres de moneda de la BD a códigos ISO
+    const currencyMap = {
+      'Soles': 'PEN',
+      'soles': 'PEN',
+      'SOLES': 'PEN',
+      'PEN': 'PEN',
+      'S/': 'PEN',
+      'Dólares': 'USD',
+      'dolares': 'USD',
+      'dólares': 'USD',
+      'DÓLARES': 'USD',
+      'USD': 'USD',
+      'US$': 'USD',
+      'Euros': 'EUR',
+      'euros': 'EUR',
+      'EUROS': 'EUR',
+      'EUR': 'EUR',
+      '€': 'EUR'
+    };
+    
+    // Obtener código ISO de moneda, por defecto PEN
+    const currencyCode = currencyMap[currency] || 'PEN';
+    
     const formatter = new Intl.NumberFormat('es-PE', {
       style: 'currency',
-      currency: currency === 'PEN' ? 'PEN' : 'USD',
+      currency: currencyCode,
       minimumFractionDigits: 2
     });
     

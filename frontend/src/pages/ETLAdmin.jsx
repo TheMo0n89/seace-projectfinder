@@ -7,8 +7,7 @@ import { Card, CardHeader, CardBody } from '../components/ui/Card';
 import { Tab } from '@headlessui/react';
 import { 
   MagnifyingGlassIcon, 
-  ClockIcon, 
-  TableCellsIcon 
+  ClockIcon
 } from '@heroicons/react/24/outline';
 
 function classNames(...classes) {
@@ -39,8 +38,7 @@ export const ETLAdmin = () => {
 
   const categories = [
     { id: 'scraping', name: 'Extracción de Procesos', icon: MagnifyingGlassIcon },
-    { id: 'logs', name: 'Historial de Operaciones', icon: ClockIcon },
-    { id: 'processes', name: 'Procesos Escaneados', icon: TableCellsIcon }
+    { id: 'logs', name: 'Historial de Operaciones', icon: ClockIcon }
   ];
 
   return (
@@ -138,18 +136,6 @@ export const ETLAdmin = () => {
                 loading={logsLoading}
                 error={logsError}
                 onRefresh={fetchEtlLogs}
-              />
-            </Tab.Panel>
-
-            {/* Procesos Escaneados */}
-            <Tab.Panel className="rounded-xl bg-white p-3">
-              <ProcessesTable 
-                processes={scrapedProcesses}
-                loading={processesLoading}
-                error={processesError}
-                onRefresh={fetchScrapedProcesses}
-                pagination={pagination}
-                onChangePage={changePage}
               />
             </Tab.Panel>
           </Tab.Panels>

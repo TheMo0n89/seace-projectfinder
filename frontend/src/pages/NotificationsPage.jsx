@@ -85,7 +85,7 @@ const NotificationsPage = () => {
     }
   };
 
-  const generateRecommendations = async (forceRegenerate = false) => {
+  const generateRecommendations = async (forceRegenerate = true) => {
     try {
       setGenerating(true);
       setError(null);
@@ -94,11 +94,18 @@ const NotificationsPage = () => {
 
       const response = await axios.post(
         `${API_URL}/users/me/recommendations/generate`,
-        { force_regenerate: forceRegenerate },
+        { force_regenerate: forceRegenerate, limit: 20 },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setSuccess(`¡Se generaron ${response.data.data.generated_count} nuevas recomendaciones!`);
+      const count = response.data.data?.generated_count || response.data.data?.recommendations_generated || 0;
+      
+      if (count > 0) {
+        setSuccess(`¡Se generaron ${count} nuevas recomendaciones personalizadas!`);
+      } else {
+        setSuccess(response.data.message || 'No se encontraron nuevos procesos que coincidan con tu perfil');
+      }
+      
       loadRecommendations();
       loadStats();
     } catch (err) {
@@ -203,7 +210,7 @@ const NotificationsPage = () => {
 
         {success && (
           <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center gap-2">
-            <Info size={20} />
+            <CheckCircle size={20} />
             <span>{success}</span>
           </div>
         )}
@@ -298,26 +305,28 @@ const NotificationsPage = () => {
               {stats.unseen > 0 && (
                 <button
                   onClick={markAllAsSeen}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition flex items-center gap-2"
+                  title="Marcar todas las recomendaciones actuales como vistas"
                 >
                   <CheckCircle size={18} />
-                  Marcar todas como vistas
+                  Marcar {stats.unseen} como vistas
                 </button>
               )}
               <button
-                onClick={() => generateRecommendations(false)}
+                onClick={() => generateRecommendations(true)}
                 disabled={generating}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Buscar nuevos procesos que coincidan con tu perfil (ignora frecuencia configurada)"
               >
                 {generating ? (
                   <>
                     <Loader2 className="animate-spin" size={18} />
-                    Generando...
+                    Buscando...
                   </>
                 ) : (
                   <>
                     <RefreshCw size={18} />
-                    Generar Nuevas
+                    Buscar Nuevas
                   </>
                 )}
               </button>
@@ -341,16 +350,27 @@ const NotificationsPage = () => {
               </h3>
               <p className="text-gray-500 mb-6">
                 {filter === 'unseen' 
-                  ? 'No tienes recomendaciones nuevas en este momento'
-                  : 'Genera tus primeras recomendaciones personalizadas'}
+                  ? 'No tienes recomendaciones nuevas. Busca procesos recientes que coincidan con tu perfil.'
+                  : filter === 'seen'
+                  ? 'No hay recomendaciones vistas. Las recomendaciones que veas aparecerán aquí.'
+                  : 'Busca procesos de contratación que coincidan con tus intereses y experiencia.'}
               </p>
               <button
-                onClick={() => generateRecommendations(false)}
+                onClick={() => generateRecommendations(true)}
                 disabled={generating}
-                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition inline-flex items-center gap-2"
+                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <RefreshCw size={20} />
-                Generar Recomendaciones
+                {generating ? (
+                  <>
+                    <Loader2 className="animate-spin" size={20} />
+                    Buscando procesos...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={20} />
+                    Buscar Procesos
+                  </>
+                )}
               </button>
             </div>
           </Card>

@@ -209,7 +209,7 @@ const ProcessDetails = ({ proceso }) => {
     { label: 'Objeto de Contratación', value: proceso.objeto_contratacion },
     { label: 'Reiniciado Desde', value: proceso.reiniciado_desde },
     { label: 'Tipo de Proceso', value: proceso.tipo_proceso },
-    { label: 'Tipo de Moneda', value: proceso.moneda },
+    { label: 'Moneda', value: proceso.moneda },
     { label: 'Código SNIP', value: proceso.codigo_snip },
     { label: 'Código CUI', value: proceso.codigo_cui },
     { label: 'Fecha Límite Presentación', value: utils.formatDate(proceso.fecha_limite_presentacion) },

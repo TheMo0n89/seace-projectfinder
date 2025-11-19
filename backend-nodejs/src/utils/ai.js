@@ -37,7 +37,9 @@ async function generateChatResponse(userQuery, context = {}) {
     const processesText = processes.map((p, i) => {
       const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const procesoUrl = `${baseUrl}/process/${p.id}`;
-      return `(${i + 1}) ${p.nomenclatura || p.descripcion || 'Proceso'} | entidad: ${p.entidad} | tipo: ${p.tipo} | objeto: ${p.objeto_contratacion || 'N/A'} | monto: ${p.monto || 'N/A'} ${p.moneda || 'Soles'} | fecha: ${p.fecha || ''} | URL_COMPLETA: ${procesoUrl}`;
+      const montoDisplay = p.montoFormateado ? p.montoFormateado : `${p.monto || 'N/A'} ${p.moneda || 'Soles'}`;
+      const escalaInfo = p.escala ? ` [ESCALA: ${p.escala.toUpperCase()}]` : '';
+      return `(${i + 1}) ${p.nomenclatura || p.descripcion || 'Proceso'} | entidad: ${p.entidad} | tipo: ${p.tipo} | objeto: ${p.objeto_contratacion || 'N/A'} | monto: ${montoDisplay}${escalaInfo} | fecha: ${p.fecha || ''} | URL_COMPLETA: ${procesoUrl}`;
     }).join('\n');
 
     // Construir contexto del usuario si está disponible
@@ -56,26 +58,53 @@ async function generateChatResponse(userQuery, context = {}) {
       ''
     ].join('\n') : '';
 
+    // Detectar si se usó fallback o búsqueda por patrón
+    const usedFallback = metadata.usedFallback || false;
+    const fallbackMessage = metadata.fallbackMessage || '';
+    const busquedaPorPatron = metadata.busquedaPorPatron || false;
+    const procesosAgrupados = metadata.procesosAgrupados || null;
+
+    // Construir sección especial para búsqueda por patrón de monto
+    let patronSection = '';
+    if (busquedaPorPatron && procesosAgrupados) {
+      patronSection = [
+        '⚠️ **IMPORTANTE:** Se encontraron procesos en diferentes escalas monetarias:',
+        procesosAgrupados.millones > 0 ? `- 💰 ${procesosAgrupados.millones} proceso(s) en **MILLONES** (más probable)` : '',
+        procesosAgrupados.miles > 0 ? `- 💵 ${procesosAgrupados.miles} proceso(s) en **MILES**` : '',
+        procesosAgrupados.cientos > 0 ? `- 💳 ${procesosAgrupados.cientos} proceso(s) en **CIENTOS**` : '',
+        procesosAgrupados.unidades > 0 ? `- 🪙 ${procesosAgrupados.unidades} proceso(s) en **UNIDADES**` : '',
+        '',
+        '**Agrupé los resultados por escala. Los procesos en MILLONES suelen ser los más comunes en SEACE.**',
+        ''
+      ].filter(line => line !== '').join('\n');
+    }
+
     const prompt = [
       'Actúa como asistente experto en contratación pública peruana (SEACE).',
       'Responde de forma estructurada y profesional usando este formato:',
       '',
       '## 🔍 Resultado de Búsqueda',
-      '[Breve resumen de lo encontrado]',
+      busquedaPorPatron ? '[Indica que encontraste procesos en diferentes escalas monetarias]' : (usedFallback ? fallbackMessage : '[Breve resumen de lo encontrado]'),
       '',
-      '### 📄 Procesos Relevantes:',
-      'Para cada proceso relevante, usa este formato:',
+      patronSection,
+      usedFallback && !busquedaPorPatron ? '⚠️ **Nota importante:** Los criterios completos no arrojaron resultados, por lo que se muestran procesos basados únicamente en tu especialidad.' : '',
+      '',
+      busquedaPorPatron ? '### 📊 Procesos Agrupados por Escala (ordenados por relevancia):' : '### 📄 Procesos Relevantes:',
+      busquedaPorPatron ? 'Agrupa los procesos por escala (MILLONES primero, luego MILES, etc.) y para cada uno usa este formato:' : 'Para cada proceso relevante, usa este formato:',
       '• **[Nomenclatura]** - [Breve descripción]',
       '  - Entidad: [nombre]',
-      '  - Monto: [monto] [moneda]',
+      busquedaPorPatron ? '  - Monto: [monto formateado con su escala - ej: "12.70 millones de Soles"]' : '  - Monto: [monto] [moneda]',
       '  - Tipo: [tipo]',
       '  - [Ver proceso](URL_COMPLETA)',
+      '',
+      busquedaPorPatron ? '💡 **Consejo:** Revisa primero los procesos en MILLONES, ya que son los más comunes en contratación pública.' : '',
       '',
       '⚠️ IMPORTANTE: Usa los URLS EXACTOS de los procesos listados abajo. NO los modifiques.',
       '',
       userContextText,
       'Si el usuario tiene perfil completado, SIEMPRE prioriza procesos que coincidan con su especialidad y regiones.',
       'Si la consulta es genérica, muestra procesos variados pero relevantes.',
+      usedFallback && !busquedaPorPatron ? 'IMPORTANTE: Indica claramente al usuario que la búsqueda se realizó SOLO por especialidad debido a que no hubo coincidencias con todos los criterios.' : '',
       '',
       `Consulta del usuario: ${userQuery}`,
       '',
@@ -83,7 +112,7 @@ async function generateChatResponse(userQuery, context = {}) {
       processesText || '(Sin procesos relevantes encontrados)',
       '',
       '### 💡 Recomendaciones',
-      '[Consejos para participar o afinar la búsqueda]'
+      busquedaPorPatron ? '[Sugiere al usuario que especifique mejor la escala si busca algo más específico]' : (usedFallback ? '[Sugiere al usuario ampliar criterios o revisar sus preferencias]' : '[Consejos para participar o afinar la búsqueda]')
     ].join('\n');
 
     const result = await model.generateContent(prompt);

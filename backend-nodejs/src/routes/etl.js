@@ -177,6 +177,63 @@ router.get('/stats', verifyToken, isAdmin, etlController.getETLStats);
 
 /**
  * @swagger
+ * /api/v1/etl/operations/{operation_id}/details:
+ *   get:
+ *     summary: Obtener detalles de una operación ETL específica
+ *     tags: [🔄 ETL]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: operation_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Detalles de la operación
+ */
+router.get('/operations/:operation_id/details', verifyToken, etlController.getOperationDetails);
+
+/**
+ * @swagger
+ * /api/v1/etl/operations/{operation_id}/progress:
+ *   get:
+ *     summary: Obtener progreso en tiempo real de una operación ETL
+ *     tags: [🔄 ETL]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: operation_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Progreso de la operación
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 operation_id:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *                 paso_actual:
+ *                   type: integer
+ *                 paso_total:
+ *                   type: integer
+ *                 porcentaje:
+ *                   type: integer
+ *                 mensaje_actual:
+ *                   type: string
+ */
+router.get('/operations/:operation_id/progress', verifyToken, etlController.getOperationProgress);
+
+/**
+ * @swagger
  * /api/v1/etl/sync:
  *   post:
  *     summary: Sincronizar procesos

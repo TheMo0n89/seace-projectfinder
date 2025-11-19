@@ -2,6 +2,7 @@
  * Controlador de Chatbot
  */
 const chatbotService = require('../services/chatbotService');
+const interactionService = require('../services/interactionService');
 const logger = require('../config/logger');
 
 class ChatbotController {
@@ -34,6 +35,18 @@ class ChatbotController {
       }
 
       const response = await chatbotService.processQuery(query, session_id, userId, usePersonalization);
+
+      // Registrar interacción de chatbot si el usuario está autenticado
+      if (userId) {
+        interactionService.registrarChatbot(
+          userId,
+          query,
+          response.respuesta,
+          null // proceso_id puede agregarse en el futuro si el chatbot menciona un proceso específico
+        ).catch(err => {
+          logger.error(`Error registrando interacción de chatbot: ${err.message}`);
+        });
+      }
 
       res.json({
         success: true,

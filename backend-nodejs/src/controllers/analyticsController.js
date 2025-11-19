@@ -1,11 +1,80 @@
 /**
- * Controlador de Analytics para tracking de interacciones
+ * Controlador de Analytics para tracking de interacciones y estadísticas
  */
 const RecommendationClick = require('../models/RecommendationClick');
 const { sequelize } = require('../config/database');
 const logger = require('../config/logger');
+const analyticsService = require('../services/analyticsService');
 
 const analyticsController = {
+  /**
+   * Obtener estadísticas del dashboard principal
+   * @route GET /api/v1/analytics/dashboard
+   * @access Admin
+   */
+  async getDashboardStats(req, res, next) {
+    try {
+      const stats = await analyticsService.getDashboardStats();
+      
+      res.status(200).json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      logger.error(`Error en getDashboardStats: ${error.message}`);
+      next(error);
+    }
+  },
+
+  /**
+   * Obtener estadísticas de perfil de usuario
+   * @route GET /api/v1/analytics/users/:userId
+   * @access Admin o el mismo usuario
+   */
+  async getUserProfileStats(req, res, next) {
+    try {
+      const { userId } = req.params;
+      
+      // Verificar que el usuario está autorizado
+      if (req.user.role !== 'admin' && req.user.id !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado para ver este perfil'
+        });
+      }
+
+      const stats = await analyticsService.getUserProfileStats(userId);
+      
+      res.status(200).json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      logger.error(`Error en getUserProfileStats: ${error.message}`);
+      next(error);
+    }
+  },
+
+  /**
+   * Obtener estadísticas del usuario autenticado
+   * @route GET /api/v1/analytics/users/me/stats
+   * @access Authenticated
+   */
+  async getMyStats(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const stats = await analyticsService.getUserProfileStats(userId);
+      
+      res.status(200).json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      logger.error(`Error en getMyStats: ${error.message}`);
+      next(error);
+    }
+  },
+
   /**
    * Registrar click en recomendación
    */

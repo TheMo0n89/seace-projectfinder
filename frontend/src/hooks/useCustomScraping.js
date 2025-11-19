@@ -31,37 +31,58 @@ export const useCustomScraping = () => {
       
       // Mapear parámetros del formulario a los esperados por el backend
       const scrapingParams = {
-        // keywords: descripcion del objeto (para usar en la búsqueda de texto)
-        keywords: params.descripcion ? params.descripcion.split(' ') : ['software'],
-        
-        // Parámetros de formulario SEACE
-        objetoContratacion: params.objetoContratacion || 'Servicio',
         anio: params.anio || new Date().getFullYear().toString(),
-        
-        // Filtros adicionales
         maxProcesses: params.maxProcesos || 100,
-        entidad: params.entidad || null,
-        tipoProceso: params.tipoProceso || null,
         useSelenium: params.useSelenium !== false
       };
       
+      // Solo agregar parámetros si fueron especificados (no vacíos)
+      if (params.descripcion && params.descripcion.trim().length > 0) {
+        scrapingParams.keywords = params.descripcion.split(/[,\s]+/).filter(k => k.trim().length > 0);
+      }
+      
+      if (params.objetoContratacion && params.objetoContratacion.trim().length > 0) {
+        scrapingParams.objetoContratacion = params.objetoContratacion;
+      }
+      
+      if (params.entidad && params.entidad.trim().length > 0) {
+        scrapingParams.entidad = params.entidad;
+      }
+      
+      if (params.tipoProceso && params.tipoProceso.trim().length > 0) {
+        scrapingParams.tipoProceso = params.tipoProceso;
+      }
+      
       const response = await etlService.startScraping(scrapingParams);
       
-      setResult(response.data || response);
+      // Extraer operation_id de la respuesta
       const opId = response.data?.operation_id || response.operation_id;
       setOperationId(opId);
       
-      // Iniciar polling para verificar estado
+      // Guardar operation_id en sessionStorage para recuperar después de refresh
       if (opId) {
-        await pollOperationStatus(opId);
+        sessionStorage.setItem('current_operation_id', opId);
+        console.log('[useCustomScraping] Operación guardada en sessionStorage:', opId);
+      }
+      
+      // IMPORTANTE: Setear result INMEDIATAMENTE para que ProgressBar se monte
+      setResult(response.data || response);
+      
+      // Desactivar loading para permitir que ProgressBar se muestre
+      setLoading(false);
+      
+      // Iniciar polling en background (sin await para no bloquear)
+      if (opId) {
+        pollOperationStatus(opId).catch(err => {
+          console.error('Error en polling background:', err);
+        });
       }
       
       return response;
     } catch (err) {
       setError(err.message);
-      throw err;
-    } finally {
       setLoading(false);
+      throw err;
     }
   };
   
@@ -82,6 +103,9 @@ export const useCustomScraping = () => {
           const latestLog = logs[0];
           if (latestLog.status === 'completed' || latestLog.status === 'failed') {
             completed = true;
+            // Limpiar sessionStorage cuando operación termina
+            sessionStorage.removeItem('current_operation_id');
+            console.log('[useCustomScraping] Operación terminada, sessionStorage limpiado');
             // Recargar la lista de logs para mostrar el estado actualizado
             await fetchEtlLogs();
           }
@@ -176,10 +200,50 @@ export const useCustomScraping = () => {
     await fetchScrapedProcesses({ page: newPage });
   };
   
-  // Efecto para cargar logs al iniciar
+  // Efecto para cargar logs al iniciar Y recuperar operación en curso
   useEffect(() => {
-    fetchEtlLogs();
-    fetchScrapedProcesses();
+    const initializeData = async () => {
+      // Cargar logs y procesos
+      await fetchEtlLogs();
+      await fetchScrapedProcesses();
+      
+      // Verificar si hay una operación en curso guardada en sessionStorage
+      const savedOperationId = sessionStorage.getItem('current_operation_id');
+      if (savedOperationId) {
+        console.log('[useCustomScraping] Recuperando operación desde sessionStorage:', savedOperationId);
+        
+        // Verificar el estado de la operación en el backend
+        try {
+          const logs = await fetchLogsByOperation(savedOperationId);
+          if (logs && logs.length > 0) {
+            const latestLog = logs[0];
+            
+            // Si la operación está corriendo, restaurar el estado
+            if (latestLog.status === 'running' || latestLog.status === 'started') {
+              console.log('[useCustomScraping] Operación activa encontrada, restaurando estado');
+              setOperationId(savedOperationId);
+              setResult({
+                operation_id: savedOperationId,
+                status: latestLog.status,
+                message: 'Operación recuperada después de refresh'
+              });
+            } else {
+              // Operación ya terminó, limpiar sessionStorage
+              console.log('[useCustomScraping] Operación ya completada, limpiando sessionStorage');
+              sessionStorage.removeItem('current_operation_id');
+            }
+          } else {
+            // No se encontró la operación, limpiar
+            sessionStorage.removeItem('current_operation_id');
+          }
+        } catch (err) {
+          console.error('[useCustomScraping] Error verificando operación guardada:', err);
+          sessionStorage.removeItem('current_operation_id');
+        }
+      }
+    };
+    
+    initializeData();
   }, []);
   
   return {

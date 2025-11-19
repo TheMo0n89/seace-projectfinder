@@ -62,6 +62,25 @@ const ETLLog = sequelize.define('ETLLog', {
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  paso_actual: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0
+  },
+  paso_total: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0
+  },
+  porcentaje: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0
+  },
+  mensaje_actual: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

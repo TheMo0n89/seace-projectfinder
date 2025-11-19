@@ -244,17 +244,18 @@ export const Home = () => {
               ))}
             </div>
           ) : (
-            <Card className="text-center py-12">
-              <BellIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                Aún no tienes recomendaciones
+            <Card className="text-center py-12 bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
+              <BellIcon className="w-16 h-16 text-indigo-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Genera tus primeras recomendaciones
               </h3>
-              <p className="text-gray-600 mb-6">
-                Las recomendaciones se generan automáticamente según tu perfil
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                Busca procesos de contratación que coincidan con tu perfil profesional y preferencias
               </p>
-              <Button asChild>
-                <Link to="/notifications">
-                  Ver Notificaciones
+              <Button asChild size="lg">
+                <Link to="/notifications" className="inline-flex items-center gap-2">
+                  <BellIcon className="w-5 h-5" />
+                  Buscar Recomendaciones
                 </Link>
               </Button>
             </Card>

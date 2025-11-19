@@ -47,8 +47,8 @@ class SeaceScraper {
 
   async searchProcesses(params = {}) {
     const {
-      keywords = ['software'],
-      objetoContratacion = 'servicio',  // Cambiar valor por defecto a 'servicio'
+      keywords = null,  // Sin default, null = buscar todo
+      objetoContratacion = null,  // Sin default, null = no filtrar
       anio = new Date().getFullYear().toString(),
       maxProcesses = 100,
       entidad = null,
@@ -66,7 +66,7 @@ class SeaceScraper {
       const baseUrl = 'https://prodapp2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml';
 
       logger.info('Iniciando búsqueda en SEACE', {
-        keywords: keywords.join(', '),
+        keywords: keywords && Array.isArray(keywords) ? keywords.join(', ') : 'Sin filtro de keywords',
         objetoContratacion,
         anio,
         fechaDesde,
@@ -89,7 +89,11 @@ class SeaceScraper {
       // PASO 3: Configuración de filtros
       // 3.1 Objeto de contratación
       if (objetoContratacion) {
+        logger.info(`🔧 Aplicando filtro: objetoContratacion = "${objetoContratacion}"`);
         await this.selectObjetoContratacion(objetoContratacion);
+        logger.info(`✅ Filtro objetoContratacion aplicado exitosamente`);
+      } else {
+        logger.warn('⚠️  NO se aplicó filtro de objetoContratacion (parámetro vacío o undefined)');
       }
 
       // 3.2 Año de convocatoria
@@ -119,11 +123,18 @@ class SeaceScraper {
       let hasMorePages = true;
       let totalPagesProcessed = 0;
 
+      // ✨ NUEVO: Extraer un buffer adicional para compensar updates
+      // Si maxProcesses = 20, extraer ~40-60 para asegurar 20 nuevos
+      const extractionLimit = maxProcesses ? Math.ceil(maxProcesses * 2.5) : null;
+      
       logger.info('Iniciando extracción de páginas...');
+      if (maxProcesses) {
+        logger.info(`💡 Objetivo: ${maxProcesses} procesos NUEVOS. Extrayendo hasta ${extractionLimit} procesos para compensar updates.`);
+      }
 
-      while (hasMorePages && (maxProcesses === null || allResults.length < maxProcesses)) {
+      while (hasMorePages && (extractionLimit === null || allResults.length < extractionLimit)) {
         logger.info(`=== PROCESANDO PÁGINA ${currentPage} ===`);
-        const limitMsg = maxProcesses ? `${allResults.length}/${maxProcesses}` : `${allResults.length}`;
+        const limitMsg = extractionLimit ? `${allResults.length}/${extractionLimit}` : `${allResults.length}`;
         logger.info(`Procesos acumulados hasta ahora: ${limitMsg}`);
 
         const pageResults = await this.extractTableData();
@@ -138,9 +149,9 @@ class SeaceScraper {
 
         logger.info(`Página ${currentPage}: ${pageResults.length} procesos extraídos (Total acumulado: ${allResults.length})`);
 
-        // Verificar si hemos alcanzado el límite (solo si existe)
-        if (maxProcesses && allResults.length >= maxProcesses) {
-          logger.info(`Límite de ${maxProcesses} procesos alcanzado. Deteniendo extracción.`);
+        // Verificar si hemos alcanzado el límite de extracción (con buffer)
+        if (extractionLimit && allResults.length >= extractionLimit) {
+          logger.info(`Límite de extracción ${extractionLimit} alcanzado (objetivo: ${maxProcesses} nuevos). Deteniendo scraping.`);
           break;
         }
 
@@ -164,8 +175,13 @@ class SeaceScraper {
       logger.info(`Total de páginas procesadas: ${totalPagesProcessed}`);
       logger.info(`Total de procesos extraídos: ${allResults.length}`);
       logger.info(`Procesos por página promedio: ${totalPagesProcessed > 0 ? (allResults.length / totalPagesProcessed).toFixed(1) : 0}`);
+      
+      if (maxProcesses) {
+        logger.info(`📦 Retornando todos los ${allResults.length} procesos extraídos. El servicio ETL filtrará hasta obtener ${maxProcesses} NUEVOS.`);
+      }
 
-      return maxProcesses ? allResults.slice(0, maxProcesses) : allResults;
+      // ✨ CAMBIO: No limitar aquí, dejar que etlService maneje el límite de NUEVOS
+      return allResults;
 
     } catch (error) {
       logger.error('Error durante scraping:', error);
@@ -244,82 +260,231 @@ class SeaceScraper {
 
   async selectObjetoContratacion(valor) {
     try {
-      logger.info(`Seleccionando Objeto de Contratación: ${valor}`);
+      logger.info('═══════════════════════════════════════════════════════');
+      logger.info(`🎯 EJECUTANDO selectObjetoContratacion`);
+      logger.info(`   Valor recibido: "${valor}"`);
+      logger.info('═══════════════════════════════════════════════════════');
 
-      // Selector correcto basado en el diagnóstico
-      const selector = 'select[id="tbBuscador:idFormBuscarProceso:j_idt201_input"]';
+      // Mapear valores a las opciones de SEACE
+      const valorMap = {
+        'bien': 'Bien',
+        'consultoria': 'Consultoría de Obra',
+        'consultoría': 'Consultoría de Obra',
+        'obra': 'Obra',
+        'servicio': 'Servicio',
+        'Bien': 'Bien',
+        'Consultoría': 'Consultoría de Obra',
+        'Consultoría de Obra': 'Consultoría de Obra',
+        'Obra': 'Obra',
+        'Servicio': 'Servicio'
+      };
 
-      const element = await this.page.$(selector);
-      if (element) {
-        logger.info(`Elemento select encontrado: ${selector}`);
+      const valorSeleccion = valorMap[valor] || valor;
+      logger.info(`Valor a seleccionar: "${valorSeleccion}"`);
 
-        // Verificar que el elemento sea visible
-        const isVisible = await element.isIntersectingViewport();
-        logger.info(`¿Elemento visible? ${isVisible}`);
+      // PASO 0: Diagnóstico - Buscar todos los selectonemenu disponibles
+      const diagnostico = await this.page.evaluate(() => {
+        const allLabels = document.querySelectorAll('label.ui-selectonemenu-label');
+        const results = [];
+        
+        allLabels.forEach((label, index) => {
+          const container = label.closest('.ui-selectonemenu');
+          const trigger = container ? container.querySelector('.ui-selectonemenu-trigger') : null;
+          
+          results.push({
+            index,
+            id: label.id,
+            text: label.textContent,
+            hasContainer: !!container,
+            hasTrigger: !!trigger,
+            containerHTML: container ? container.outerHTML.substring(0, 200) : null
+          });
+        });
+        
+        return results;
+      });
 
-        if (!isVisible) {
-          await element.scrollIntoView();
-          await this.page.waitForTimeout(500);
-        }
+      logger.info(`🔍 Diagnóstico: Encontrados ${diagnostico.length} selectonemenu`);
+      diagnostico.forEach(d => {
+        logger.info(`  [${d.index}] ID: ${d.id}, Texto: "${d.text}", Trigger: ${d.hasTrigger}`);
+      });
 
-        // Mapear valores comunes a los valores del select
-        const valorMap = {
-          'bien': '62',
-          'consultoria': '63',
-          'consultoría': '63',
-          'obra': '64',
-          'servicio': '65',
-          'Bien': '62',
-          'Consultoría de Obra': '63',
-          'Servicio': '65'
-        };
-
-        const valorSeleccion = valorMap[valor] || valor;
-        logger.info(`Valor original: "${valor}", Valor mapeado: "${valorSeleccion}"`);
-
-        // Seleccionar por valor usando evaluate
-        const success = await this.page.evaluate((sel, val) => {
-          const select = document.querySelector(sel);
-          if (select && select.tagName === 'SELECT') {
-            console.log(`Select encontrado en evaluate: ${select.id}`);
-            const options = Array.from(select.options);
-            console.log(`Opciones disponibles: ${options.map(o => `${o.value}: ${o.text}`).join(', ')}`);
-
-            const targetOption = options.find(opt =>
-              opt.text.toLowerCase().includes(val.toLowerCase()) ||
-              opt.value === val
-            );
-
-            if (targetOption) {
-              console.log(`Opción objetivo encontrada: "${targetOption.value}" - "${targetOption.text}"`);
-              select.value = targetOption.value;
-              select.dispatchEvent(new Event('change', { bubbles: true }));
-              console.log(`Valor seleccionado: ${select.value}`);
-              return true;
-            } else {
-              console.log(`No se encontró opción para: "${val}"`);
-              return false;
+      // PASO 1: Buscar el selectonemenu correcto por ID (ObjContratacion del formulario específico)
+      const componentInfo = await this.page.evaluate(() => {
+        // Buscar el componente específico de Objeto de Contratación por su ID
+        const labels = document.querySelectorAll('label.ui-selectonemenu-label');
+        
+        for (const label of labels) {
+          // IMPORTANTE: Buscar ESPECÍFICAMENTE el del formulario "idFormbuscarACF" o "idFormBuscarProceso"
+          if (label.id && (
+            label.id.includes('idFormbuscarACF:cbxObjContratacion') || 
+            label.id.includes('idFormBuscarProceso:') && label.id.includes('ObjContratacion')
+          )) {
+            const container = label.closest('.ui-selectonemenu');
+            if (container) {
+              return {
+                labelId: label.id,
+                labelText: label.textContent.trim(),
+                containerId: container.id,
+                found: true
+              };
             }
-          } else {
-            console.log(`Select no encontrado con selector: ${sel}`);
-            return false;
           }
-        }, selector, valorSeleccion);
-
-        if (success) {
-          logger.info(`Objeto de Contratación seleccionado exitosamente: ${valor} (valor interno: ${valorSeleccion})`);
-          await this.page.waitForTimeout(1000);
-          return;
-        } else {
-          logger.warn(`La evaluación de selección falló para: ${valorSeleccion}`);
         }
-      } else {
-        logger.warn(`No se encontró el elemento select con selector: ${selector}`);
+        
+        // Fallback: buscar por texto solo si no se encuentra por ID
+        for (const label of labels) {
+          const text = label.textContent.trim();
+          // Solo buscar si el texto es una opción específica (no "[Seleccione]")
+          if (text === 'Bien' || text === 'Obra' || text === 'Servicio' || text === 'Consultoría de Obra') {
+            const container = label.closest('.ui-selectonemenu');
+            if (container && label.id.includes('ObjContratacion')) {
+              return {
+                labelId: label.id,
+                labelText: text,
+                containerId: container.id,
+                found: true
+              };
+            }
+          }
+        }
+        
+        return { found: false };
+      });
+
+      if (!componentInfo.found) {
+        logger.error('❌ No se encontró el componente de Objeto de Contratación');
+        return;
       }
 
-      logger.warn(`No se pudo seleccionar Objeto de Contratación: ${valor}`);
+      logger.info(`✅ Componente encontrado - Label ID: ${componentInfo.labelId}, Texto actual: "${componentInfo.labelText}"`);
+
+      // PASO 2: Click en trigger para abrir dropdown usando el ID dinámico
+      const triggerClicked = await this.page.evaluate((labelId) => {
+        const label = document.querySelector(`label[id="${labelId}"]`);
+        if (!label) {
+          console.log('❌ No se encontró el label');
+          return false;
+        }
+
+        const container = label.closest('.ui-selectonemenu');
+        if (!container) {
+          console.log('❌ No se encontró el container');
+          return false;
+        }
+
+        const trigger = container.querySelector('.ui-selectonemenu-trigger');
+        if (!trigger) {
+          console.log('❌ No se encontró el trigger');
+          return false;
+        }
+
+        trigger.click();
+        console.log('✅ Click en trigger ejecutado');
+        return true;
+      }, componentInfo.labelId);
+
+      if (!triggerClicked) {
+        logger.warn('No se pudo hacer click en el trigger del selectonemenu');
+        return;
+      }
+
+      // PASO 3: Esperar a que el panel se despliegue (animación PrimeFaces)
+      await this.page.waitForTimeout(800);
+
+      // PASO 4: Buscar el panel (ID dinámico basado en el label)
+      const panelId = componentInfo.labelId.replace('_label', '_panel');
+      logger.info(`🔍 Buscando panel con ID: ${panelId}`);
+
+      const panelInfo = await this.page.evaluate((panelId) => {
+        const panel = document.getElementById(panelId);
+        if (!panel) {
+          // Buscar panel visible alternativo
+          const visiblePanels = document.querySelectorAll('.ui-selectonemenu-panel:not(.ui-helper-hidden)');
+          console.log(`Paneles visibles encontrados: ${visiblePanels.length}`);
+          
+          if (visiblePanels.length > 0) {
+            const alternativePanel = visiblePanels[0];
+            return {
+              found: true,
+              panelId: alternativePanel.id,
+              display: alternativePanel.style.display,
+              isHidden: alternativePanel.classList.contains('ui-helper-hidden'),
+              itemCount: alternativePanel.querySelectorAll('.ui-selectonemenu-item').length
+            };
+          }
+          
+          return { found: false };
+        }
+        
+        return {
+          found: true,
+          panelId: panel.id,
+          display: panel.style.display,
+          isHidden: panel.classList.contains('ui-helper-hidden'),
+          itemCount: panel.querySelectorAll('.ui-selectonemenu-item').length
+        };
+      }, panelId);
+
+      if (!panelInfo.found) {
+        logger.error('❌ El panel no se desplegó correctamente');
+        logger.info('💡 Tip: El componente puede tener un ID diferente o estar oculto');
+        return;
+      }
+
+      logger.info(`✅ Panel encontrado: ${panelInfo.panelId}, Items: ${panelInfo.itemCount}, Display: ${panelInfo.display}, Hidden: ${panelInfo.isHidden}`);
+
+      // PASO 5: Click en el item deseado
+      const itemClicked = await this.page.evaluate((panelId, targetLabel) => {
+        const panel = document.getElementById(panelId);
+        if (!panel) {
+          console.log('❌ Panel no encontrado al intentar seleccionar item');
+          return false;
+        }
+
+        const items = panel.querySelectorAll('.ui-selectonemenu-item');
+        console.log(`📋 Items encontrados: ${items.length}`);
+
+        for (const item of items) {
+          const itemLabel = item.getAttribute('data-label');
+          console.log(`  - Item: "${itemLabel}"`);
+          
+          if (itemLabel === targetLabel) {
+            console.log(`✅ Item objetivo encontrado: "${itemLabel}"`);
+            item.click();
+            console.log('✅ Click en item ejecutado');
+            return true;
+          }
+        }
+
+        console.log(`❌ No se encontró item con label: "${targetLabel}"`);
+        return false;
+      }, panelInfo.panelId, valorSeleccion);
+
+      if (itemClicked) {
+        logger.info(`✅ Item seleccionado: ${valorSeleccion}`);
+        // Esperar a que se cierre el panel y se actualice el label
+        await this.page.waitForTimeout(1000);
+        
+        // VERIFICACIÓN: Confirmar que el label cambió
+        const currentLabel = await this.page.evaluate((labelId) => {
+          const label = document.getElementById(labelId);
+          return label ? label.textContent : null;
+        }, componentInfo.labelId);
+        
+        logger.info(`Label actual después de selección: "${currentLabel}"`);
+        
+        if (currentLabel === valorSeleccion) {
+          logger.info(`✅ Selección verificada correctamente: ${valorSeleccion}`);
+        } else {
+          logger.warn(`⚠️ El label no coincide. Esperado: "${valorSeleccion}", Actual: "${currentLabel}"`);
+        }
+      } else {
+        logger.warn(`❌ No se pudo seleccionar el item: ${valorSeleccion}`);
+      }
+
     } catch (err) {
-      logger.warn(`Error seleccionando Objeto de Contratación: ${err.message}`);
+      logger.error(`Error seleccionando Objeto de Contratación: ${err.message}`);
     }
   }
 
@@ -597,10 +762,11 @@ class SeaceScraper {
             // [5] Objeto de Contratación
             // [6] Descripción de Objeto
             // [7] Código SNIP
-            // [8] VR/VE/Cuantía de contratación
-            // [9] Moneda
-            // [10] Versión SEACE
-            // [11] Acciones (ignorar)
+            // [8] Código Único de Inversión
+            // [9] VR / VE / Cuantía de la contratación
+            // [10] Moneda
+            // [11] Versión SEACE
+            // [12] Acciones (ignorar)
             
             const numero_orden = getCleanText(cells[0]);
             const nombre_entidad = getCleanText(cells[1]);           // Columna 1: Nombre entidad
@@ -610,9 +776,18 @@ class SeaceScraper {
             const objeto_contratacion = getCleanText(cells[5]);      // Columna 5: Objeto contratación
             const descripcion_objeto = getCleanText(cells[6]);       // Columna 6: Descripción objeto
             const codigo_snip = getCleanText(cells[7]);              // Columna 7: Código SNIP
-            const monto_referencial_text = getCleanText(cells[8]);   // Columna 8: VR/VE/Cuantía
-            const moneda = getCleanText(cells[9]);                   // Columna 9: Moneda
-            const version_seace = getCleanText(cells[10]);           // Columna 10: Versión SEACE
+            const codigo_unico_inversion = getCleanText(cells[8]);   // Columna 8: Código Único de Inversión
+            const monto_referencial_text = getCleanText(cells[9]);   // Columna 9: VR/VE/Cuantía (VALOR NUMÉRICO)
+            const moneda = getCleanText(cells[10]);                  // Columna 10: Moneda (Soles, Dólares, etc.)
+            const version_seace = getCleanText(cells[11]);           // Columna 11: Versión SEACE
+            
+            // DEBUG: Log para verificar extracción correcta de monto y moneda
+            if (index === 0) {
+              console.log('[DEBUG] Ejemplo de extracción de primera fila:');
+              console.log(`  - Columna 8 (Código Único Inversión): "${codigo_unico_inversion}"`);
+              console.log(`  - Columna 9 (Monto VR/VE/Cuantía): "${monto_referencial_text}"`);
+              console.log(`  - Columna 10 (Moneda): "${moneda}"`);
+            }
 
             // PASO 4.2: Validar que la fila sea de datos reales
             const isValidNumber = isNumber(numero_orden);
@@ -654,14 +829,14 @@ class SeaceScraper {
               // Identificadores
               numero_convocatoria: nomenclatura,  // Usar nomenclatura como número convocatoria
               entidad_ruc: null,
-              codigo_cui: null,
+              codigo_cui: codigo_unico_inversion || null,  // Código Único de Inversión
 
               // Ubicación (no disponible en tabla SEACE)
               departamento: null,
               provincia: null,
               distrito: null,
 
-              // Económicos - EXTRAER DEL CAMPO VR/VE
+              // Económicos - monto_referencial contiene el valor numérico, moneda el tipo
               monto_referencial: monto_referencial_text && monto_referencial_text !== '---' ? monto_referencial_text : null,
               moneda: moneda || 'Soles',
               rubro: objeto_contratacion,  // Usar objeto_contratacion como categoría

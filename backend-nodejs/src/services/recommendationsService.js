@@ -62,13 +62,20 @@ class RecommendationsService {
         
         if (lastGenerated && !this.shouldGenerateRecommendations(frequency, lastGenerated)) {
           const nextDate = this.calculateNextGeneration(frequency, lastGenerated);
+          const existingCount = await UserRecommendation.count({ where: { user_id: userId } });
+          
           logger.info(`Usuario ${userId}: No es tiempo de generar (frecuencia: ${frequency})`);
           return {
-            message: `Aún no es tiempo de generar. Próxima generación: ${nextDate.toISOString()}`,
-            existing_recommendations: await UserRecommendation.count({ where: { user_id: userId } }),
-            next_generation: nextDate
+            message: `Ya tienes ${existingCount} recomendaciones activas. La próxima generación automática será el ${nextDate.toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+            existing_recommendations: existingCount,
+            next_generation: nextDate,
+            generated_count: 0,
+            recommendations_generated: 0,
+            info: 'Usa el botón "Buscar Nuevas" para forzar una búsqueda inmediata (ignorando la frecuencia configurada)'
           };
         }
+      } else {
+        logger.info(`Usuario ${userId}: Generación forzada manual (ignorando frecuencia)`);
       }
 
       // Obtener procesos activos (publicados, no adjudicados)
@@ -83,8 +90,10 @@ class RecommendationsService {
 
       if (procesos.length === 0) {
         return {
-          message: 'No hay procesos disponibles para generar recomendaciones',
-          recommendations_generated: 0
+          message: 'No hay procesos activos disponibles en este momento',
+          recommendations_generated: 0,
+          generated_count: 0,
+          info: 'El sistema actualiza los procesos periódicamente. Intenta de nuevo más tarde.'
         };
       }
 
@@ -92,10 +101,18 @@ class RecommendationsService {
 
       // Calcular score para cada proceso
       const scoredProcesses = [];
+      let maxScore = 0;
+      let minScore = 100;
+      
       for (const proceso of procesos) {
         const score = await this.calculateScore(preferencia, proceso);
         
-        if (score.total >= 50) { // Solo procesos con score >= 50
+        // Tracking de scores para debugging
+        if (score.total > maxScore) maxScore = score.total;
+        if (score.total < minScore) minScore = score.total;
+        
+        // Threshold más bajo para capturar más procesos (30 en lugar de 50)
+        if (score.total >= 30) {
           scoredProcesses.push({
             proceso_id: proceso.id,
             score: score.total,
@@ -107,20 +124,69 @@ class RecommendationsService {
         }
       }
 
+      logger.info(`Score range: min=${minScore.toFixed(1)}, max=${maxScore.toFixed(1)}, matches con score>=30: ${scoredProcesses.length}`);
+
       // Ordenar por score descendente y tomar top N
       scoredProcesses.sort((a, b) => b.score - a.score);
       const topProcesses = scoredProcesses.slice(0, limit);
 
-      // Si es regeneración, eliminar recomendaciones anteriores
-      if (forceRegenerate) {
-        await UserRecommendation.destroy({
-          where: { user_id: userId }
-        });
+      // Si no hay procesos que cumplan el threshold
+      if (topProcesses.length === 0) {
+        logger.warn(`No se encontraron procesos con score >= 30 para usuario ${userId}`);
+        return {
+          message: 'No se encontraron procesos que coincidan suficientemente con tu perfil',
+          recommendations_generated: 0,
+          generated_count: 0,
+          info: 'Intenta ampliar tus preferencias o ajustar los filtros en tu perfil',
+          debug: {
+            processes_evaluated: procesos.length,
+            min_score: minScore.toFixed(1),
+            max_score: maxScore.toFixed(1),
+            threshold: 30
+          }
+        };
       }
 
-      // Insertar nuevas recomendaciones
+      // Obtener recomendaciones existentes para no duplicar
+      const existingRecommendations = await UserRecommendation.findAll({
+        where: { user_id: userId },
+        attributes: ['proceso_id', 'seen', 'notified', 'id']
+      });
+
+      const existingProcesoIds = new Set(existingRecommendations.map(r => r.proceso_id));
+      const seenProcesoIds = new Set(
+        existingRecommendations.filter(r => r.seen).map(r => r.proceso_id)
+      );
+
+      // Filtrar procesos que ya están en recomendaciones
+      const newProcesses = topProcesses.filter(item => !existingProcesoIds.has(item.proceso_id));
+
+      logger.info(`Procesos evaluados: ${topProcesses.length}, Ya existentes: ${existingProcesoIds.size}, Nuevos a agregar: ${newProcesses.length}`);
+
+      // Si no hay nuevos procesos que agregar
+      if (newProcesses.length === 0) {
+        const existingCount = existingRecommendations.length;
+        const seenCount = seenProcesoIds.size;
+        const unseenCount = existingCount - seenCount;
+
+        logger.info(`Usuario ${userId}: No hay nuevas recomendaciones. Existentes: ${existingCount} (${seenCount} vistas, ${unseenCount} no vistas)`);
+        
+        return {
+          message: `Ya tienes todas las mejores recomendaciones disponibles (${existingCount} total)`,
+          recommendations_generated: 0,
+          generated_count: 0,
+          existing_recommendations: existingCount,
+          seen_count: seenCount,
+          unseen_count: unseenCount,
+          info: existingCount > 0 
+            ? `Mantienes ${seenCount} recomendaciones vistas y ${unseenCount} pendientes. No hay nuevos procesos que cumplan con tu perfil en este momento.`
+            : 'No hay procesos disponibles que coincidan con tu perfil. Intenta ajustar tus preferencias.'
+        };
+      }
+
+      // Insertar solo nuevas recomendaciones (sin eliminar las existentes)
       const recommendations = await Promise.all(
-        topProcesses.map((item, index) => 
+        newProcesses.map((item, index) => 
           UserRecommendation.create({
             user_id: userId,
             proceso_id: item.proceso_id,
@@ -142,13 +208,23 @@ class RecommendationsService {
         { where: { id: userId } }
       );
 
-      logger.info(`Generadas ${recommendations.length} recomendaciones para usuario ${userId}`);
+      const totalRecommendations = existingRecommendations.length + recommendations.length;
+      const seenCount = seenProcesoIds.size;
+      const unseenCount = totalRecommendations - seenCount;
+
+      logger.info(`Agregadas ${recommendations.length} nuevas recomendaciones para usuario ${userId}. Total: ${totalRecommendations}`);
 
       const response = {
-        message: 'Recomendaciones generadas exitosamente',
+        message: `Se agregaron ${recommendations.length} nuevas recomendaciones`,
         recommendations_generated: recommendations.length,
         generated_count: recommendations.length,
-        average_score: recommendations.reduce((sum, r) => sum + r.score, 0) / recommendations.length
+        total_recommendations: totalRecommendations,
+        seen_count: seenCount,
+        unseen_count: unseenCount,
+        average_score: recommendations.length > 0 
+          ? recommendations.reduce((sum, r) => sum + r.score, 0) / recommendations.length 
+          : 0,
+        info: `Total de recomendaciones: ${totalRecommendations} (${seenCount} vistas, ${unseenCount} pendientes)`
       };
 
       // Agregar warnings si hay campos opcionales sin completar
@@ -334,15 +410,22 @@ class RecommendationsService {
     const text = `${objetoContratacion} ${descripcion}`.toLowerCase();
     let maxMatch = 0;
 
+    // Keywords expandidos y más flexibles para Ingeniería de Software
     const typeKeywords = {
-      'Software a medida': ['desarrollo', 'software', 'aplicación', 'sistema', 'plataforma', 'web', 'móvil'],
-      'Infraestructura': ['servidor', 'hardware', 'red', 'infraestructura', 'equipamiento', 'datacenter'],
-      'Ciberseguridad': ['seguridad', 'firewall', 'antivirus', 'cifrado', 'protección', 'vulnerabilidad'],
-      'Cloud': ['nube', 'cloud', 'aws', 'azure', 'google cloud', 'saas', 'iaas'],
-      'Business Intelligence': ['bi', 'business intelligence', 'análisis', 'reportes', 'dashboard', 'analytics'],
-      'Consultoría': ['consultoría', 'asesoría', 'evaluación', 'auditoría', 'diagnóstico'],
-      'Licenciamiento': ['licencia', 'software', 'microsoft', 'oracle', 'sap', 'renovación'],
-      'Soporte y Mantenimiento': ['soporte', 'mantenimiento', 'operación', 'administración', 'gestión']
+      'Mantenimiento de Software': ['mantenimiento', 'soporte', 'actualización', 'operación', 'administración', 'gestión', 'software', 'sistema', 'aplicación', 'plataforma'],
+      'Desarrollo Web': ['desarrollo', 'web', 'portal', 'sitio', 'página', 'internet', 'online', 'digital', 'sistema', 'plataforma', 'aplicación'],
+      'Desarrollo Móvil': ['móvil', 'mobile', 'app', 'android', 'ios', 'aplicación', 'celular', 'smartphone'],
+      'DevOps': ['devops', 'ci/cd', 'jenkins', 'docker', 'kubernetes', 'automatización', 'deploy', 'integración continua'],
+      'Testing QA': ['testing', 'pruebas', 'qa', 'calidad', 'test', 'validación', 'verificación'],
+      'Arquitectura de Software': ['arquitectura', 'diseño', 'modelado', 'infraestructura', 'plataforma', 'sistema'],
+      'Software a medida': ['desarrollo', 'software', 'aplicación', 'sistema', 'plataforma', 'web', 'móvil', 'personalizado', 'medida'],
+      'Infraestructura': ['servidor', 'hardware', 'red', 'infraestructura', 'equipamiento', 'datacenter', 'ti', 'tecnología'],
+      'Ciberseguridad': ['seguridad', 'firewall', 'antivirus', 'cifrado', 'protección', 'vulnerabilidad', 'ciberseguridad'],
+      'Cloud': ['nube', 'cloud', 'aws', 'azure', 'google cloud', 'saas', 'iaas', 'paas'],
+      'Business Intelligence': ['bi', 'business intelligence', 'análisis', 'reportes', 'dashboard', 'analytics', 'datos', 'data'],
+      'Consultoría': ['consultoría', 'asesoría', 'evaluación', 'auditoría', 'diagnóstico', 'servicio'],
+      'Licenciamiento': ['licencia', 'software', 'microsoft', 'oracle', 'sap', 'renovación', 'adquisición'],
+      'Soporte y Mantenimiento': ['soporte', 'mantenimiento', 'operación', 'administración', 'gestión', 'servicio', 'técnico']
     };
 
     for (const userType of userTypes) {
@@ -355,8 +438,19 @@ class RecommendationsService {
         }
       }
 
-      const matchScore = Math.min(typeMatch / keywords.length, 1);
+      // Scoring más generoso: si encuentra al menos 1 keyword de 10, ya es 10%
+      const matchScore = typeMatch > 0 ? Math.min(typeMatch / Math.max(keywords.length * 0.3, 1), 1) : 0;
       maxMatch = Math.max(maxMatch, matchScore);
+    }
+
+    // Si no hay match exacto pero el texto contiene palabras genéricas de TI, dar score mínimo
+    if (maxMatch === 0) {
+      const genericTIWords = ['sistema', 'software', 'tecnología', 'informática', 'digital', 'electrónico', 'automatización'];
+      for (const word of genericTIWords) {
+        if (text.includes(word)) {
+          return 0.3; // 30% por match genérico
+        }
+      }
     }
 
     return maxMatch;
@@ -587,9 +681,9 @@ class RecommendationsService {
       });
 
       return {
-        total_recommendations: total,
-        unseen_count: unseen,
-        seen_count: total - unseen,
+        total: total,
+        unseen: unseen,
+        seen: total - unseen,
         average_score: avgScore?.avg_score ? Math.round(avgScore.avg_score * 10) / 10 : 0
       };
     } catch (error) {

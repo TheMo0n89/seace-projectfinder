@@ -4,18 +4,23 @@ import { Button } from '../ui/Button';
 import { Alert, ErrorAlert } from '../ui/Alert';
 import { LoadingSpinner } from '../ui/Loading';
 import { ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import ProgressBar from './ProgressBar';
 
 const CustomScrapingForm = ({ onSubmit, loading, error, result }) => {
   // Estado del formulario
   const [formValues, setFormValues] = useState({
-    objetoContratacion: 'Servicio',
+    objetoContratacion: '',  // Vacío por defecto = Todos
     descripcion: '',
     anio: new Date().getFullYear().toString(),
     entidad: '',
     tipoProceso: '',
-    maxProcesos: 100,
+    maxProcesos: null,
     useSelenium: true
   });
+
+  // Estado para mostrar/ocultar el ProgressBar
+  const [showProgress, setShowProgress] = useState(false);
+  const [operationId, setOperationId] = useState(null);
 
   // Opciones para Objeto de Contratación (coincide con SEACE)
   const objetoContratacionOptions = [
@@ -23,7 +28,7 @@ const CustomScrapingForm = ({ onSubmit, loading, error, result }) => {
     { value: 'Bien', label: 'Bien' },
     { value: 'Servicio', label: 'Servicio' },
     { value: 'Obra', label: 'Obra' },
-    { value: 'Consultoría', label: 'Consultoría' },
+    { value: 'Consultoría de Obra', label: 'Consultoría de Obra' },
   ];
 
   // Opciones para años (últimos 5 años + próximo)
@@ -49,7 +54,7 @@ const CustomScrapingForm = ({ onSubmit, loading, error, result }) => {
     const { name, value } = e.target;
     setFormValues(prev => ({
       ...prev,
-      [name]: name === 'maxProcesos' ? Number(value) : value
+      [name]: name === 'maxProcesos' ? (value === '' ? null : Number(value)) : value
     }));
   };
 
@@ -57,6 +62,24 @@ const CustomScrapingForm = ({ onSubmit, loading, error, result }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(formValues);
+  };
+
+  // Manejar cuando se inicia una operación
+  const handleOperationStart = (opId) => {
+    setOperationId(opId);
+    setShowProgress(true);
+  };
+
+  // Manejar cuando la operación completa
+  const handleOperationComplete = (status) => {
+    console.log(`Operación completada con estado: ${status}`);
+    // Opcionalmente, puedes mantener visible el progreso o ocultarlo
+    // setShowProgress(false); // Descomentar si quieres ocultarlo automáticamente
+  };
+
+  // Debug helper
+  const debugLog = (message, data = null) => {
+    console.log(`[CustomScrapingForm] ${message}`, data || '');
   };
 
   return (
@@ -89,7 +112,7 @@ const CustomScrapingForm = ({ onSubmit, loading, error, result }) => {
                 ))}
               </select>
               <p className="mt-1 text-sm text-gray-500">
-                Tipo de objeto según SEACE (por defecto: Servicio)
+                Tipo de objeto según SEACE (vacío = Todos)
               </p>
             </div>
 
@@ -174,20 +197,20 @@ const CustomScrapingForm = ({ onSubmit, loading, error, result }) => {
             {/* Máximo de Procesos */}
             <div>
               <label htmlFor="maxProcesos" className="block text-sm font-medium text-gray-700">
-                Máximo de Procesos a Extraer
+                Máximo de Procesos NUEVOS a Insertar
               </label>
               <input
                 type="number"
                 id="maxProcesos"
                 name="maxProcesos"
-                value={formValues.maxProcesos}
+                value={formValues.maxProcesos || ''}
                 onChange={handleChange}
                 min="1"
-                max="500"
+                placeholder="Dejar vacío para extraer todos"
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-seace-blue focus:border-seace-blue"
               />
               <p className="mt-1 text-sm text-gray-500">
-                Limitar la cantidad evita sobrecargar el sistema
+                Solo cuenta procesos NUEVOS. Deja vacío para extraer sin límite.
               </p>
             </div>
 
@@ -244,11 +267,28 @@ const CustomScrapingForm = ({ onSubmit, loading, error, result }) => {
         {/* Resultados */}
         {result && !loading && !error && (
           <div className="mt-4">
+            {debugLog('Renderizando resultado:', result) || null}
             <Alert
               type="success"
               title="Extracción iniciada correctamente"
               message={`Operación ID: ${result.operation_id}. Estado: ${result.status}`}
             />
+            {/* Mostrar ProgressBar cuando se inicia la operación */}
+            {result.operation_id ? (
+              <div className="mt-6">
+                {debugLog('Renderizando ProgressBar con operationId:', result.operation_id) || null}
+                <ProgressBar 
+                  operationId={result.operation_id}
+                  status={result.status}
+                  onComplete={handleOperationComplete}
+                  showLogs={true}
+                />
+              </div>
+            ) : (
+              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                <p className="text-sm text-yellow-800">⚠️ No se recibió operation_id en el resultado</p>
+              </div>
+            )}
           </div>
         )}
       </CardBody>

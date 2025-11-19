@@ -64,7 +64,7 @@ const Proceso = sequelize.define('Proceso', {
     allowNull: true
   },
   version_seace: {
-    type: DataTypes.STRING(10),
+    type: DataTypes.STRING(50),
     allowNull: true,
     defaultValue: '3'
   },
@@ -101,7 +101,7 @@ const Proceso = sequelize.define('Proceso', {
     allowNull: true
   },
   moneda: {
-    type: DataTypes.STRING(10),
+    type: DataTypes.STRING(50),
     allowNull: true
   },
   rubro: {

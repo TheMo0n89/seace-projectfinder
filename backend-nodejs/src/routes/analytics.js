@@ -1,83 +1,48 @@
 const express = require('express');
 const router = express.Router();
 const analyticsController = require('../controllers/analyticsController');
-const { verifyToken } = require('../middlewares/auth');
+const { verifyToken, isAdmin } = require('../middlewares/auth');
 
 /**
- * @swagger
- * tags:
- *   name: Analytics
- *   description: Tracking de interacciones y analytics
+ * @route GET /api/v1/analytics/dashboard
+ * @desc Obtener estadísticas generales del dashboard
+ * @access Admin only
  */
+router.get('/dashboard', verifyToken, isAdmin, analyticsController.getDashboardStats);
 
 /**
- * @swagger
- * /api/v1/analytics/recommendation-click:
- *   post:
- *     summary: Registrar click en recomendación
- *     tags: [Analytics]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - recommendation_id
- *               - proceso_id
- *             properties:
- *               recommendation_id:
- *                 type: integer
- *               proceso_id:
- *                 type: integer
- *               session_id:
- *                 type: string
- *     responses:
- *       200:
- *         description: Click registrado exitosamente
- *       401:
- *         description: No autenticado
+ * @route GET /api/v1/analytics/users/me/stats
+ * @desc Obtener estadísticas del usuario autenticado
+ * @access Authenticated
  */
-router.post('/recommendation-click', verifyToken, analyticsController.trackRecommendationClick);
+router.get('/users/me/stats', verifyToken, analyticsController.getMyStats);
 
 /**
- * @swagger
- * /api/v1/analytics/me/stats:
- *   get:
- *     summary: Obtener estadísticas de clicks del usuario
- *     tags: [Analytics]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Estadísticas obtenidas exitosamente
- *       401:
- *         description: No autenticado
+ * @route GET /api/v1/analytics/users/:userId
+ * @desc Obtener estadísticas de un usuario específico
+ * @access Admin o el mismo usuario
  */
-router.get('/me/stats', verifyToken, analyticsController.getUserClickStats);
+router.get('/users/:userId', verifyToken, analyticsController.getUserProfileStats);
 
 /**
- * @swagger
- * /api/v1/analytics/top-processes:
- *   get:
- *     summary: Obtener procesos más clickeados
- *     tags: [Analytics]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *     responses:
- *       200:
- *         description: Top procesos obtenidos exitosamente
- *       401:
- *         description: No autenticado
+ * @route POST /api/v1/analytics/track/click
+ * @desc Registrar click en recomendación
+ * @access Authenticated
  */
-router.get('/top-processes', verifyToken, analyticsController.getTopClickedProcesses);
+router.post('/track/click', verifyToken, analyticsController.trackRecommendationClick);
+
+/**
+ * @route GET /api/v1/analytics/clicks/stats
+ * @desc Obtener estadísticas de clicks del usuario
+ * @access Authenticated
+ */
+router.get('/clicks/stats', verifyToken, analyticsController.getUserClickStats);
+
+/**
+ * @route GET /api/v1/analytics/clicks/top
+ * @desc Obtener procesos más clickeados
+ * @access Admin
+ */
+router.get('/clicks/top', verifyToken, isAdmin, analyticsController.getTopClickedProcesses);
 
 module.exports = router;

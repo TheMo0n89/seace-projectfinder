@@ -2,6 +2,7 @@
  * Controlador de recomendaciones
  */
 const recomendacionesService = require('../services/recomendacionesService');
+const interactionService = require('../services/interactionService');
 const logger = require('../config/logger');
 
 class RecomendacionesController {
@@ -63,6 +64,15 @@ class RecomendacionesController {
       
       const result = await recomendacionesService.getUserRecomendaciones(userId, filters);
       
+      // Registrar visualización de recomendaciones
+      if (result.items && result.items.length > 0) {
+        result.items.forEach(rec => {
+          interactionService.registrarViewRecomendacion(userId, rec.proceso_id, rec.score).catch(err => {
+            logger.error(`Error registrando visualización de recomendación: ${err.message}`);
+          });
+        });
+      }
+      
       res.json({
         success: true,
         data: result
@@ -74,10 +84,18 @@ class RecomendacionesController {
 
   async updateRecomendacionVisibility(req, res, next) {
     try {
+      const userId = req.user.id;
       const { recomendacion_id } = req.params;
       const { visible } = req.body;
       
       const recomendacion = await recomendacionesService.updateRecomendacionVisibility(recomendacion_id, visible);
+      
+      // Registrar cuando se oculta una recomendación
+      if (visible === false) {
+        interactionService.registrarHideRecomendacion(userId, recomendacion.proceso_id).catch(err => {
+          logger.error(`Error registrando ocultamiento de recomendación: ${err.message}`);
+        });
+      }
       
       res.json({
         success: true,

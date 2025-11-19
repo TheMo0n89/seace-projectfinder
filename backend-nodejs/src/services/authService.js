@@ -222,13 +222,14 @@ class AuthService {
    */
   async updateLastLogin(userId) {
     try {
-      // Validar que userId sea un número válido
-      if (!userId || isNaN(parseInt(userId))) {
+      // Validar que userId esté presente (UUID string o cualquier ID)
+      if (!userId) {
         console.warn('updateLastLogin: userId inválido', { userId });
         return;
       }
       
-      const user = await User.findByPk(parseInt(userId));
+      // Buscar usuario directamente con el ID (UUID)
+      const user = await User.findByPk(userId);
       if (user) {
         await user.update({ last_login: new Date() });
       }

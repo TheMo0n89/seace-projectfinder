@@ -14,6 +14,10 @@ import { useAuth } from './useAuth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
+// Locks globales para prevenir llamadas simultáneas
+let isCheckingGlobal = false;
+let lastCheckGlobal = null;
+
 /**
  * Calcula si debe generar recomendaciones según la frecuencia
  * @param {string} frequency - Frecuencia de notificación (diaria, cada_3_dias, semanal, mensual)
@@ -68,7 +72,22 @@ export const useAutoGenerateRecommendations = ({
       return;
     }
 
+    // Lock global: prevenir múltiples llamadas simultáneas
+    if (isCheckingGlobal) {
+      console.log('[Auto-Generate] Ya hay una verificación en curso, omitiendo...');
+      return;
+    }
+
+    // Debounce: no verificar si se verificó hace menos de 3 segundos
+    const now = new Date();
+    if (lastCheckGlobal && (now - lastCheckGlobal) < 3000) {
+      console.log('[Auto-Generate] Verificación reciente (hace menos de 3s), omitiendo...');
+      return;
+    }
+
     try {
+      isCheckingGlobal = true;
+      lastCheckGlobal = now;
       setIsGenerating(true);
 
       // Obtener la frecuencia del usuario y sus recomendaciones actuales
@@ -99,29 +118,30 @@ export const useAutoGenerateRecommendations = ({
       setShouldGenerate(shouldGen);
 
       if (shouldGen) {
-        console.log(`[Auto-Generate] Generando recomendaciones (frecuencia: ${frequency}, última: ${lastGenerated})`);
+        console.log(`[Auto-Generate] Generando recomendaciones automáticas (frecuencia: ${frequency}, última: ${lastGenerated})`);
         
-        // Generar recomendaciones en background
+        // Generar recomendaciones en background (sin forzar)
         const generateResponse = await axios.post(
           `${API_URL}/users/me/recommendations/generate`,
-          { force_regenerate: false },
+          { force_regenerate: false, limit: 20 },
           {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           }
         );
 
-        console.log(`[Auto-Generate] ✓ Generadas ${generateResponse.data.generated_count} recomendaciones`);
+        const count = generateResponse.data.data?.generated_count || generateResponse.data.data?.recommendations_generated || 0;
+        console.log(`[Auto-Generate] ✓ ${count} recomendaciones generadas`);
         
         // Mostrar warnings si hay campos opcionales sin completar
-        if (generateResponse.data.warnings && generateResponse.data.warnings.length > 0) {
-          console.warn('[Auto-Generate] Sugerencias para mejorar el perfil:', generateResponse.data.warnings);
+        if (generateResponse.data.data?.warnings && generateResponse.data.data.warnings.length > 0) {
+          console.warn('[Auto-Generate] Sugerencias para mejorar el perfil:', generateResponse.data.data.warnings);
         }
         
-        if (onSuccess) {
-          onSuccess(generateResponse.data);
+        if (onSuccess && count > 0) {
+          onSuccess(generateResponse.data.data);
         }
       } else {
-        console.log(`[Auto-Generate] No es necesario generar (frecuencia: ${frequency}, última: ${lastGenerated})`);
+        console.log(`[Auto-Generate] No es necesario generar automáticamente (frecuencia: ${frequency}, última: ${lastGenerated})`);
       }
 
       setLastCheck(new Date());
@@ -137,6 +157,7 @@ export const useAutoGenerateRecommendations = ({
       }
     } finally {
       setIsGenerating(false);
+      isCheckingGlobal = false;
     }
   }, [enabled, isAuthenticated, user, onSuccess, onError]);
 
