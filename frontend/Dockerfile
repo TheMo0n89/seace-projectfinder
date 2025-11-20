@@ -11,6 +11,10 @@ RUN npm install
 # Copiar código fuente
 COPY . .
 
+# Recibir variables de entorno como ARG para el build
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 # Construir aplicación
 RUN npm run build
 
