@@ -64,11 +64,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://161.132.49.24:8000/api/v1
     ports:
       - "5173:80"
     environment:
     # CAMBIAR IP POR LOCALHOST SI SE DESEA TRABAJAR EN LOCAL
-      - VITE_API_URL=http://161.132.49.24:8000/api/v1	
+      - VITE_API_URL=http://161.132.49.24:8000/api/v1
       - NODE_ENV=production
     depends_on:
       backend-nodejs:
